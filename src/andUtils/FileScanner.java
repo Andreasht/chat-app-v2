@@ -27,6 +27,7 @@ public final class FileScanner {
         byte[] data = f.getBytes();
         try {
             Files.write(path, data);
+
         } catch (IOException ex) {
             ex.printStackTrace();
         }

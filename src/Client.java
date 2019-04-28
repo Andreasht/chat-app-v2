@@ -1,5 +1,8 @@
-
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.text.JTextComponent;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
@@ -10,33 +13,34 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Scanner;
 
 
 import static andUtils.Utils.*;
 
 public class Client {
-    static final int PORT = 50000;
-    JTextPane chatArea;
-    JTextField inputArea;
-    JFrame frame;
-    JPanel panel;
-    Thread readThread;
-    BufferedReader input;
-    PrintWriter output;
-    InetAddress serverAddress;
-    Socket server;
-    ArrayList<User> userList;
+    private static final int PORT = 50000;
+    private JTextArea chatArea;
+    private JTextField inputArea;
+    private JList<String> contactsList;
+    private JFrame frame;
+    private JPanel panel;
+    private Thread readThread;
+    private BufferedReader input;
+    private PrintWriter output;
+    private static final String SERVER_ADDRESSS = "10.147.20.221";
+    private Socket server;
+    private final ArrayList<User> userList;
+    private User activeUser;
+    private User recipient;
 
-    public Client() {
+    private Client() {
         makeGUILookNice("Segoe UI Semilight", Font.PLAIN, 14);
-        try {
-            serverAddress = InetAddress.getByName("10.147.20.221");
-        } catch (UnknownHostException ex) {
-            System.out.println("Error in connecting to server. Is the server running?\n");
-            ex.printStackTrace();
-        }
+
         userList = new ArrayList<>();
         userList.add(new User());
+        userList.add(new User("test"));
+        userList.add(new User("test2"));
 
         init();
     }
@@ -81,12 +85,21 @@ public class Client {
         logInButton.addActionListener(e -> {
             boolean foundUser = false;
             for(User b : userList) {
-                if(b.getBrugernavn().equals(userField.getText())) {
+                if(b.getUsername().equals(userField.getText())) {
                     foundUser = true;
                     //noinspection PointlessBooleanExpression
                     if(b.authenticate(passField.getPassword()) == true) {
-                        new PopUp().infoBox("Du er nu logget ind som: "+b.getBrugernavn());
-                        drawChatWindow();
+                        new PopUp().infoBox("Du er nu logget ind som: "+b.getUsername());
+                        activeUser = b;
+                        try {
+                            server = activeUser.getSocket();
+                            server = new Socket(SERVER_ADDRESSS,PORT);
+                            System.out.println(activeUser.getStatus());
+                            System.out.println("Connected to server with address: "+server.getRemoteSocketAddress());
+                        } catch (IOException e1) {
+                            System.out.println("Error in connecting to server. Is the server running?\nContinuing offline...");
+                        }
+                        drawMainWindow();
                     } else {
                         new PopUp().infoBox("Forkert kodeord. Prøv igen.");
                     }
@@ -104,50 +117,112 @@ public class Client {
 
     }
 
-    private void drawChatWindow() {
-        chatArea = new JTextPane();
+    private void drawMainWindow() {
+        redrawBasic();
+        chatArea = new JTextArea();
         inputArea = new JTextField();
-        chatArea.setBounds(25,25,490,320);
+
+
         chatArea.setMargin(new Insets(6,6,6,6));
         chatArea.setEditable(false);
         JScrollPane chatPane = new JScrollPane(chatArea);
-        chatPane.setBounds(25,25,490,320);
+        chatPane.setBounds(185,25,490,320);
+        chatPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+        chatPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
         chatArea.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, true);
 
-        inputArea.setBounds(0,350,400,50);
         inputArea.setMargin(new Insets(6,6,6,6));
         JScrollPane inputPane = new JScrollPane(inputArea);
-        inputPane.setBounds(25,350,650,50);
+        inputPane.setBounds(185,350,490,50);
+        inputPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+        inputPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
         JButton sendButton = new JButton("Send");
         sendButton.setBounds(575,410,100,35);
 
-        JButton disconnectButton = new JButton("Disconnect");
-        disconnectButton.setBounds(25,410,130,35);
+        JButton findButton = new JButton("Find Contacts");
+        findButton.setBounds(25,410,130,35);
 
         inputArea.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    // sendMessage();
+                    sendMessage();
                 }
             }
         });
 
-        // sendButton.addActionListener(e -> sendMessage());
+        findButton.addActionListener(e -> {
+            String addedContact = JOptionPane.showInputDialog(null,"Find contact:","Add new contact",JOptionPane.PLAIN_MESSAGE);
+            boolean found = false;
+            for(User user : userList) {
+                if(addedContact.equals(user.getUsername())) {
+                    activeUser.addContact(user);
+                    found = true;
+                    new PopUp().infoBox("New contact added: " + user.getUsername());
+                    new Log(activeUser,user).createLog();
+                    drawMainWindow();
+                }
+            }
+            if(!found) {
+                new PopUp().infoBox("No user with this username found.");
+            }
+        });
+
+        sendButton.addActionListener(e -> sendMessage());
+
+        String[] users = activeUser.getContacts().stream().map(b -> b.getUsername() + " | " + b.getStatus()).toArray(String[]::new);
+    /*    StringBuilder users = new StringBuilder();
+        for(User u : activeUser.getContacts()) {
+            users.append(u.getUsername()).append(" | ").append(u.getStatus()).append("\n");
+        }
+        JTextField testfield = new JTextField(users.toString());
+        testfield.setEditable(true); */
+        contactsList = new JList<>(users);
+        JScrollPane listScroller = new JScrollPane(contactsList);
+        listScroller.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        listScroller.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+        listScroller.setBounds(25,25,160,320);
+
+
+        contactsList.addListSelectionListener(new ListListener());
+        chatArea.getDocument().addDocumentListener(new ChatListener());
+
+        panel.add(chatPane);
+        panel.add(inputPane);
+        panel.add(listScroller);
+        panel.add(sendButton);
+        panel.add(findButton);
+        refreshFrame();
+
     }
 
-    void redrawBasic() {
+    private void redrawBasic() {
         frame.getContentPane().removeAll();
-        panel = new JPanel();
+        panel = new JPanel(null);
         frame.setContentPane(panel);
     }
 
-    void refreshFrame() {
+    private void refreshFrame() {
         frame.validate();
         frame.repaint();
         frame.setVisible(true);
+    }
+
+    void sendMessage() {
+        try {
+            String message = inputArea.getText().trim();
+            if(message.equals("")) return;
+            output.println(message);
+            inputArea.requestFocus();
+            inputArea.setText(null);
+        } catch(Exception ex) {
+            JOptionPane.showMessageDialog(null,ex.getMessage());
+            System.exit(0);
+        }
+
+
     }
 
     public static void main(String[] args) {
@@ -156,10 +231,69 @@ public class Client {
 
     class PopUp
     {
-        public void infoBox(String infoMessage)
+        void infoBox(String infoMessage)
         {
             JOptionPane.showMessageDialog(null, infoMessage, "Info", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
+    class ListListener implements ListSelectionListener {
+
+        @Override
+        public void valueChanged(ListSelectionEvent e) {
+            readThread.interrupt();
+            JList list = (JList) e.getSource();
+            String[] value = ((String) list.getSelectedValue()).split(" ");
+            String name = value[0];
+            if(!e.getValueIsAdjusting()) {
+                for(User u : userList) {
+                    if (name.equals(u.getUsername())) {
+                        recipient = u;
+                    }
+                }
+            }
+            if(Log.logExists(activeUser, recipient)) {
+                chatArea.setText(Log.getLog(activeUser,recipient));
+            }
+            readThread = new Thread(new ReadThread());
+            readThread.start();
+        }
+    }
+
+    class ChatListener implements DocumentListener {
+
+        @Override
+        public void insertUpdate(DocumentEvent e) {
+            Log.writeToLog(activeUser,recipient,chatArea.getText());
+            System.out.println("Wrote log");
+        }
+
+        @Override
+        public void removeUpdate(DocumentEvent e) {
+
+        }
+
+        @Override
+        public void changedUpdate(DocumentEvent e) {
+
+        }
+    }
+
+    class ReadThread implements Runnable {
+
+        @Override
+        public void run() {
+            String message;
+            while(!Thread.currentThread().isInterrupted()) {
+                try {
+                    message = input.readLine();
+                    if(!message.isEmpty()) {
+                        chatArea.append(message + "\n");
+                    }
+                } catch(Exception ex) {
+                    System.err.println("failed to parse incoming message");
+                }
+            }
+        }
+    }
 }

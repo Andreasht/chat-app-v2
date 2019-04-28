@@ -1,34 +1,53 @@
-import java.awt.*;
-import java.io.File;
-import java.io.IOException;
+import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 public class User implements java.io.Serializable {
-    static int antalBrugere;
-    private char[] kodeord;
-    private String brugernavn;
-    static final String DEFAULT_UN = "admin";
-    static final char[] DEFUALT_PASS = {'a','d','m','i','n'};
+    private static int users;
+    private char[] passwd;
+    private String username;
+    private static final String DEFAULT_UN = "admin";
+    private static final char[] DEFUALT_PASS = {'a','d','m','i','n'};
+    private ArrayList<User> contacts;
+    private Status status;
+    private Socket socket;
 
     User() {
-        brugernavn = DEFAULT_UN;
-        kodeord = DEFUALT_PASS;
-    }
-    User(String bN /*, char[] k */) {
-        brugernavn = bN;
-     //   kodeord = k;
-        antalBrugere++;
+        username = DEFAULT_UN;
+        passwd = DEFUALT_PASS;
+        contacts = new ArrayList<>();
+        status = Status.OFF;
     }
 
-    public String getBrugernavn() {
-        return brugernavn;
+    User(String bN /*, char[] k */) {
+        username = bN;
+     //   passwd = k;
+        users++;
+    }
+
+    String getUsername() {
+        return username;
     }
 
     boolean authenticate(char[] kodeIn) {
-        return Arrays.equals(this.kodeord, kodeIn);
+        return Arrays.equals(this.passwd, kodeIn);
     }
 
-    public static void main(String[] args) {
+    ArrayList<User> getContacts() {
+        return contacts;
+    }
 
+    void addContact(User user) {
+        contacts.add(user);
+    }
+
+    String getStatus() {
+        status = socket.isConnected() ? Status.ON : Status.OFF;
+      //  status = Status.OFF;
+        return status.getText();
+    }
+
+    public Socket getSocket() {
+        return socket;
     }
 }
