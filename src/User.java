@@ -1,4 +1,6 @@
+import java.io.IOException;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -10,7 +12,7 @@ public class User implements java.io.Serializable {
     private static final char[] DEFUALT_PASS = {'a','d','m','i','n'};
     private ArrayList<User> contacts;
     private Status status;
-    private Socket socket;
+    // private Socket socket;
 
     User() {
         username = DEFAULT_UN;
@@ -42,12 +44,27 @@ public class User implements java.io.Serializable {
     }
 
     String getStatus() {
-        status = socket.isConnected() ? Status.ON : Status.OFF;
+        // status = socket.isConnected() ? Status.ON : Status.OFF;
       //  status = Status.OFF;
         return status.getText();
     }
 
-    public Socket getSocket() {
-        return socket;
+//    public Socket getSocket() {
+//        return socket;
+//    }
+
+//    public void connect(String address, int port) {
+//        try {
+//            socket = new Socket(address, port);
+//            System.out.printf("Connected user %s to server with address %s:%d%n", username, address, port);
+//        } catch(IOException ex) {
+//            System.err.println("Error in connecting UserSocket!");
+//
+//        }
+//    }
+
+
+    public void setStatus(Status status) {
+        this.status = status;
     }
 }

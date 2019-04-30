@@ -9,11 +9,8 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.*;
 
-import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Scanner;
 
 
 import static andUtils.Utils.*;
@@ -22,14 +19,13 @@ public class Client {
     private static final int PORT = 50000;
     private JTextArea chatArea;
     private JTextField inputArea;
-    private JList<String> contactsList;
     private JFrame frame;
     private JPanel panel;
     private Thread readThread;
     private BufferedReader input;
     private PrintWriter output;
-    private static final String SERVER_ADDRESSS = "10.147.20.221";
-    private Socket server;
+    private static final String SERVER_ADDRESSS = "127.0.0.1";
+    private Socket socket;
     private final ArrayList<User> userList;
     private User activeUser;
     private User recipient;
@@ -91,24 +87,34 @@ public class Client {
                     if(b.authenticate(passField.getPassword()) == true) {
                         new PopUp().infoBox("Du er nu logget ind som: "+b.getUsername());
                         activeUser = b;
+
                         try {
-                            server = activeUser.getSocket();
-                            server = new Socket(SERVER_ADDRESSS,PORT);
-                            System.out.println(activeUser.getStatus());
-                            System.out.println("Connected to server with address: "+server.getRemoteSocketAddress());
+                            socket = new Socket(SERVER_ADDRESSS,PORT);
+                            activeUser.setStatus(Status.ON);
+                            input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                            output= new PrintWriter(socket.getOutputStream());
                         } catch (IOException e1) {
-                            System.out.println("Error in connecting to server. Is the server running?\nContinuing offline...");
+                            e1.printStackTrace();
+                            System.out.println("Couldn't connect to server!");
                         }
+                        System.out.println(activeUser.getStatus());
+                        try (ObjectOutputStream objOut = new ObjectOutputStream(socket.getOutputStream())) {
+                            objOut.writeObject(activeUser);
+                            System.out.println("Wrote user to server!");
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+
                         drawMainWindow();
-                    } else {
-                        new PopUp().infoBox("Forkert kodeord. Prøv igen.");
-                    }
+                    } else new PopUp().infoBox("Forkert kodeord. Prøv igen.");
                 }
             }
             if(!foundUser) {
                 new PopUp().infoBox("Ingen bruger med dette navn fundet.");
             }
         });
+
+
 
         frame.setContentPane(panel);
         frame.setSize(700,500);
@@ -179,7 +185,7 @@ public class Client {
         }
         JTextField testfield = new JTextField(users.toString());
         testfield.setEditable(true); */
-        contactsList = new JList<>(users);
+        JList<String> contactsList = new JList<>(users);
         JScrollPane listScroller = new JScrollPane(contactsList);
         listScroller.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         listScroller.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
