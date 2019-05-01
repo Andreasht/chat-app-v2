@@ -1,6 +1,4 @@
 import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.text.JTextComponent;
@@ -24,19 +22,19 @@ public class Client {
     private Thread readThread;
     private BufferedReader input;
     private PrintWriter output;
-    private static final String SERVER_ADDRESSS = "127.0.0.1";
+    private static final String SERVER_ADDRESS = "127.0.0.1";
     private Socket socket;
-    private final ArrayList<User> userList;
+    // private final ArrayList<User> userList;
     private User activeUser;
     private User recipient;
 
     private Client() {
         makeGUILookNice("Segoe UI Semilight", Font.PLAIN, 14);
 
-        userList = new ArrayList<>();
-        userList.add(new User());
-        userList.add(new User("test"));
-        userList.add(new User("test2"));
+//        userList = new ArrayList<>();
+//        userList.add(new User());
+//        userList.add(new User("test"));
+//        userList.add(new User("test2"));
 
         init();
     }
@@ -79,42 +77,128 @@ public class Client {
         userField.requestFocus();
 
         logInButton.addActionListener(e -> {
-            boolean foundUser = false;
-            for(User b : userList) {
-                if(b.getUsername().equals(userField.getText())) {
-                    foundUser = true;
-                    //noinspection PointlessBooleanExpression
-                    if(b.authenticate(passField.getPassword()) == true) {
-                        new PopUp().infoBox("Du er nu logget ind som: "+b.getUsername());
-                        activeUser = b;
 
-                        try {
-                            socket = new Socket(SERVER_ADDRESSS,PORT);
-                            activeUser.setStatus(Status.ON);
-                            input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                            output= new PrintWriter(socket.getOutputStream());
-                        } catch (IOException e1) {
-                            e1.printStackTrace();
-                            System.out.println("Couldn't connect to server!");
-                        }
-                        System.out.println(activeUser.getStatus());
-                        try (ObjectOutputStream objOut = new ObjectOutputStream(socket.getOutputStream())) {
-                            objOut.writeObject(activeUser);
-                            System.out.println("Wrote user to server!");
-                        } catch (Exception ex) {
+            try {
+                try {
+                    // make connection to server:
+                    socket = new Socket(SERVER_ADDRESS,PORT);
+                    System.out.println("Opened connection to server");
+                    try(ObjectOutputStream objOut = new ObjectOutputStream(socket.getOutputStream())) {
+                        ObjectInputStream objIn = new ObjectInputStream(socket.getInputStream());
+                        //send name to server to check if user exists:
+                        String enteredName = userField.getText();
+                        objOut.writeObject(enteredName);
+                        System.out.printf("Wrote name: %s%n", enteredName);
+                        char[] enteredPass = passField.getPassword();
+                        objOut.writeObject(enteredPass);
+                        System.out.printf("Wrote pass: %s%n", enteredPass);
+                        Object readObject = objIn.readObject();
+                        System.out.printf("Read object of type: %s%n", readObject.getClass());
+                        if(!(readObject instanceof NoUserException)) {
+                            System.out.println("Not NoUserException");
+                            Boolean auth = (Boolean) readObject;
+                            if(auth) {
+
+                                System.out.println("Logged in!");
+                                input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                                output = new PrintWriter(socket.getOutputStream(), true);
+                                output.println("sadasdasdasdasdasdadasd");
+                                new PopUp().infoBox("Successfully logged in as: "+enteredName);
+                                drawMainWindow();
+                                System.out.println("Main window drawn!");
+                            } else {
+                                new PopUp().errorBox("Wrong login information.");
+                                socket.close();
+                                System.out.println("Wrong pass!\nWebsocket closed!");
+                            }
+                        } else {
+                            NoUserException ex = (NoUserException) readObject;
+                            System.err.println("No user with entered name found!");
                             ex.printStackTrace();
+                            new PopUp().errorBox("Wrong login information.");
+                            socket.close();
                         }
-
-                        drawMainWindow();
-                    } else new PopUp().infoBox("Forkert kodeord. Prøv igen.");
+//                        objIn.close();
+                        System.out.println("Closed stream!");
+                    }
+                } catch(Exception ex) {
+                    System.err.println("Error in connecting to server!");
+                    ex.printStackTrace();
                 }
+            } catch (Exception ex) {
+                System.err.println("Some weird exception!");
+                ex.printStackTrace();
             }
-            if(!foundUser) {
-                new PopUp().infoBox("Ingen bruger med dette navn fundet.");
-            }
+            System.out.println("Connected: "+socket.isConnected());
+
+//            try {
+//                User temp = Server.getUser(userField.getText());
+//                if(temp.authenticate(passField.getPassword())) {
+//                    new PopUp().infoBox(String.format("Logged in as: %s",temp.getUsername()));
+//                    activeUser = temp;
+//
+//                    try {
+//                        socket = new Socket(SERVER_ADDRESS,PORT);
+//                        activeUser.setStatus(Status.ON);
+//                        input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+//                        output = new PrintWriter(socket.getOutputStream());
+//                    } catch(IOException exc) {
+//                        System.err.println("Couldn't connect to server!\n");
+//                        exc.printStackTrace();
+//                    }
+//                    System.out.println(activeUser.getStatus());
+//                    try (ObjectOutputStream objOut = new ObjectOutputStream(socket.getOutputStream())) {
+//                        objOut.writeObject(activeUser);
+//                        System.out.println("Wrote user to server!");
+//                    } catch (Exception ex) {
+//                        ex.printStackTrace();
+//                    }
+//
+//                    drawMainWindow();
+//                } else {
+//                    new PopUp().errorBox("Incorrect login information.");
+//                }
+//            } catch (NoUserException ex) {
+//                new PopUp().errorBox("Incorrect login information.");
+//            }
+
+
+
+
+//            boolean foundUser = false;
+//            for(User b : userList) {
+//                if(b.getUsername().equals(userField.getText())) {
+//                    foundUser = true;
+//                    //noinspection PointlessBooleanExpression
+//                    if(b.authenticate(passField.getPassword()) == true) {
+//                        new PopUp().infoBox("Du er nu logget ind som: "+b.getUsername());
+//                        activeUser = b;
+//
+//                        try {
+//                            socket = new Socket(SERVER_ADDRESS,PORT);
+//                            activeUser.setStatus(Status.ON);
+//                            input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+//                            output= new PrintWriter(socket.getOutputStream());
+//                        } catch (IOException e1) {
+//                            e1.printStackTrace();
+//                            System.out.println("Couldn't connect to server!");
+//                        }
+//                        System.out.println(activeUser.getStatus());
+//                        try (ObjectOutputStream objOut = new ObjectOutputStream(socket.getOutputStream())) {
+//                            objOut.writeObject(activeUser);
+//                            System.out.println("Wrote user to server!");
+//                        } catch (Exception ex) {
+//                            ex.printStackTrace();
+//                        }
+//
+//                        drawMainWindow();
+//                    } else new PopUp().infoBox("Forkert kodeord. Prøv igen.");
+//                }
+//            }
+//            if(!foundUser) {
+//                new PopUp().infoBox("Ingen bruger med dette navn fundet.");
+//            }
         });
-
-
 
         frame.setContentPane(panel);
         frame.setSize(700,500);
@@ -159,45 +243,40 @@ public class Client {
             }
         });
 
-        findButton.addActionListener(e -> {
-            String addedContact = JOptionPane.showInputDialog(null,"Find contact:","Add new contact",JOptionPane.PLAIN_MESSAGE);
-            boolean found = false;
-            for(User user : userList) {
-                if(addedContact.equals(user.getUsername())) {
-                    activeUser.addContact(user);
-                    found = true;
-                    new PopUp().infoBox("New contact added: " + user.getUsername());
-                    new Log(activeUser,user).createLog();
-                    drawMainWindow();
-                }
-            }
-            if(!found) {
-                new PopUp().infoBox("No user with this username found.");
-            }
-        });
+//        findButton.addActionListener(e -> {
+//            String addedContact = JOptionPane.showInputDialog(null,"Find contact:","Add new contact",JOptionPane.PLAIN_MESSAGE);
+//            boolean found = false;
+//            for(User user : userList) {
+//                if(addedContact.equals(user.getUsername())) {
+//                    activeUser.addContact(user);
+//                    found = true;
+//                    new PopUp().infoBox("New contact added: " + user.getUsername());
+//                    new Log(activeUser,user).createLog();
+//                    drawMainWindow();
+//                }
+//            }
+//            if(!found) {
+//                new PopUp().infoBox("No user with this username found.");
+//            }
+//        });
 
         sendButton.addActionListener(e -> sendMessage());
 
-        String[] users = activeUser.getContacts().stream().map(b -> b.getUsername() + " | " + b.getStatus()).toArray(String[]::new);
-    /*    StringBuilder users = new StringBuilder();
-        for(User u : activeUser.getContacts()) {
-            users.append(u.getUsername()).append(" | ").append(u.getStatus()).append("\n");
-        }
-        JTextField testfield = new JTextField(users.toString());
-        testfield.setEditable(true); */
-        JList<String> contactsList = new JList<>(users);
-        JScrollPane listScroller = new JScrollPane(contactsList);
-        listScroller.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        listScroller.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
-        listScroller.setBounds(25,25,160,320);
-
-
-        contactsList.addListSelectionListener(new ListListener());
-        chatArea.getDocument().addDocumentListener(new ChatListener());
+//        String[] users = activeUser.getContacts().stream().map(b -> b.getUsername() + " | " + b.getStatus()).toArray(String[]::new);
+//
+//        JList<String> contactsList = new JList<>(users);
+//        JScrollPane listScroller = new JScrollPane(contactsList);
+//        listScroller.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+//        listScroller.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+//        listScroller.setBounds(25,25,160,320);
+//
+//
+//        contactsList.addListSelectionListener(new ListListener());
+//        chatArea.getDocument().addDocumentListener(new ChatListener());
 
         panel.add(chatPane);
         panel.add(inputPane);
-        panel.add(listScroller);
+//        panel.add(listScroller);
         panel.add(sendButton);
         panel.add(findButton);
         refreshFrame();
@@ -216,15 +295,18 @@ public class Client {
         frame.setVisible(true);
     }
 
-    void sendMessage() {
+    private void sendMessage() {
         try {
             String message = inputArea.getText().trim();
             if(message.equals("")) return;
             output.println(message);
+            System.out.printf("Wrote message %s%n", message);
             inputArea.requestFocus();
             inputArea.setText(null);
         } catch(Exception ex) {
-            JOptionPane.showMessageDialog(null,ex.getMessage());
+            JOptionPane.showMessageDialog(null,"Error.\n"+ex.toString(),"Error!",JOptionPane.ERROR_MESSAGE);
+            System.err.println("Error in sending message!");
+            ex.printStackTrace();
             System.exit(0);
         }
 
@@ -241,49 +323,53 @@ public class Client {
         {
             JOptionPane.showMessageDialog(null, infoMessage, "Info", JOptionPane.INFORMATION_MESSAGE);
         }
+
+        void errorBox(String errorMessage) {
+            JOptionPane.showMessageDialog(null, errorMessage,"Error!",JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     class ListListener implements ListSelectionListener {
 
         @Override
         public void valueChanged(ListSelectionEvent e) {
-            readThread.interrupt();
-            JList list = (JList) e.getSource();
-            String[] value = ((String) list.getSelectedValue()).split(" ");
-            String name = value[0];
-            if(!e.getValueIsAdjusting()) {
-                for(User u : userList) {
-                    if (name.equals(u.getUsername())) {
-                        recipient = u;
-                    }
-                }
-            }
-            if(Log.logExists(activeUser, recipient)) {
-                chatArea.setText(Log.getLog(activeUser,recipient));
-            }
-            readThread = new Thread(new ReadThread());
-            readThread.start();
+//            readThread.interrupt();
+//            JList list = (JList) e.getSource();
+//            String[] value = ((String) list.getSelectedValue()).split(" ");
+//            String name = value[0];
+//            if(!e.getValueIsAdjusting()) {
+//                for(User u : userList) {
+//                    if (name.equals(u.getUsername())) {
+//                        recipient = u;
+//                    }
+//                }
+//            }
+//            if(Log.logExists(activeUser, recipient)) {
+//                chatArea.setText(Log.getLog(activeUser,recipient));
+//            }
+//            readThread = new Thread(new ReadThread());
+//            readThread.start();
         }
     }
 
-    class ChatListener implements DocumentListener {
-
-        @Override
-        public void insertUpdate(DocumentEvent e) {
-            Log.writeToLog(activeUser,recipient,chatArea.getText());
-            System.out.println("Wrote log");
-        }
-
-        @Override
-        public void removeUpdate(DocumentEvent e) {
-
-        }
-
-        @Override
-        public void changedUpdate(DocumentEvent e) {
-
-        }
-    }
+//    class ChatListener implements DocumentListener {
+//
+//        @Override
+//        public void insertUpdate(DocumentEvent e) {
+//            Log.writeToLog(activeUser,recipient,chatArea.getText());
+//            System.out.println("Wrote log");
+//        }
+//
+//        @Override
+//        public void removeUpdate(DocumentEvent e) {
+//
+//        }
+//
+//        @Override
+//        public void changedUpdate(DocumentEvent e) {
+//
+//        }
+//    }
 
     class ReadThread implements Runnable {
 

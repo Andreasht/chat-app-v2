@@ -1,4 +1,7 @@
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -12,7 +15,9 @@ public class User implements java.io.Serializable {
     private static final char[] DEFUALT_PASS = {'a','d','m','i','n'};
     private ArrayList<User> contacts;
     private Status status;
-    // private Socket socket;
+    private Socket socket;
+    private PrintStream streamOut;
+    private InputStream streamIn;
 
     User() {
         username = DEFAULT_UN;
@@ -21,9 +26,21 @@ public class User implements java.io.Serializable {
         status = Status.OFF;
     }
 
-    User(String bN /*, char[] k */) {
-        username = bN;
-     //   passwd = k;
+    User(String username , char[] pass, Socket socket) {
+        this.username = username;
+        passwd = pass;
+        status = Status.OFF;
+        System.out.println("Is socket closed? from user (1)"+socket.isClosed());
+        this.socket = socket;
+        System.out.println("Is socket closed? from user (2)"+this.socket.isClosed());
+        try {
+            this.streamIn = socket.getInputStream();
+            this.streamOut = new PrintStream(socket.getOutputStream());
+        } catch (IOException ex) {
+            System.err.println("Failed to create new user!\n");
+            ex.printStackTrace();
+        }
+
         users++;
     }
 
@@ -66,5 +83,17 @@ public class User implements java.io.Serializable {
 
     public void setStatus(Status status) {
         this.status = status;
+    }
+
+    public PrintStream getStreamOut() {
+        return streamOut;
+    }
+
+    public InputStream getStreamIn() {
+        return streamIn;
+    }
+
+    public Socket getSocket() {
+        return socket;
     }
 }
