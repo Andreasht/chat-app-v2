@@ -1,7 +1,9 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Scanner;
 
 public class Server {
@@ -19,7 +21,8 @@ public class Server {
         registeredClients = new ArrayList<>();
         System.out.println("Created list!");
         activeClients = new ArrayList<>();
-        registeredClients.add(new User());
+        registeredClients.add(new User(false));
+        registeredClients.add(new User(true));
         System.out.println("-------------------------");
         for(User user : registeredClients) {
             System.out.println(user.getUsername());
@@ -37,8 +40,9 @@ public class Server {
                 Socket clientSocket = serverSocket.accept();
                 System.out.printf("Received connection from: %s%n", clientSocket.getRemoteSocketAddress());
                 //open input stream
-                ObjectInputStream objIn = new ObjectInputStream(clientSocket.getInputStream());
                 ObjectOutputStream objOut = new ObjectOutputStream(clientSocket.getOutputStream());
+                ObjectInputStream objIn = new ObjectInputStream(clientSocket.getInputStream());
+
                 System.out.println("Opened streams.");
                 try {
                     // receive name
@@ -46,43 +50,41 @@ public class Server {
                     //receive pass
                     char[] receivedPass = (char[]) objIn.readObject();
                     //check if login is ok
-                    System.out.printf("Received name and pass.\n%s\n%s%n", receivedName, receivedPass.toString());
+                    System.out.printf("Received name and pass.\n%s\n%s%n", receivedName, Arrays.toString(receivedPass));
                     try {
                         Boolean authenticated = auth(receivedName, receivedPass);
                         System.out.printf("authenticated: %s%n", authenticated);
                         //send result
                         objOut.writeObject(authenticated);
                         System.out.println("wrote result");
-                        System.out.println("is socket closed? (1) "+clientSocket.isClosed());
                         if(authenticated) {
-                            Thread.sleep(500);
+                            String in = (String) objIn.readObject();
+                            boolean ready = in.equals("READY");
+                            if(ready) {
+                                System.out.println("Got ready!");
+
 //                            activeClients.add(getUser(receivedName));
-                            User connectingUser = new User(receivedName,receivedPass,clientSocket); // fix!
-                            activeClients.add(connectingUser);
-                            System.out.println("added client to active clients");
-//                            objIn.close();
-//                            objOut.close();
-//                            System.out.println("closed streams (1)");
-                            System.out.println("Is socket closed? (2) "+clientSocket.isClosed());
-                            new Thread(new ClientHandler(this, connectingUser)).start();
-                            System.out.println("Started new ClientHandler thread for connecting client!");
+                                User connectingUser = new User(receivedName,receivedPass,objOut,objIn); // fix!
+                                activeClients.add(connectingUser);
+                                System.out.println("added client to active clients");
+
+
+                                new Thread(new ClientHandler(this, connectingUser)).start();
+
+                                System.out.println("Started new ClientHandler thread for connecting client!");
+                            }
+                        } else {
+                            System.out.println("User entered wrong password!\nDenying login.");
                         }
+
                     } catch(NoUserException ex) {
                         System.err.println("No user exception!\n");
                         objOut.writeObject(ex);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
                     }
-
-
                 } catch(ClassNotFoundException ex) {
                     System.err.println("Error in reading object input stream!");
                     ex.printStackTrace();
                 }
-//                objIn.close();
-//                objOut.close();
-                System.out.println("closed streams (2)");
-                System.out.println("Is socket closed? (4) "+clientSocket.isClosed());
             }
 
         } catch (IOException ex) {
@@ -93,7 +95,7 @@ public class Server {
         System.out.println("pong!");
     }
 
-    void removeUser(User user) {
+    private void removeUser(User user) {
         activeClients.remove(user);
     }
 
@@ -113,6 +115,17 @@ public class Server {
         throw new NoUserException();
     }
 
+    void writeToAll(Object input) {
+        for(User client : activeClients) {
+            try {
+                client.getStreamOut().writeObject(input);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+
 
     //    void sendMessage(String msg, User sender, String receiver) {
 //        boolean find = false;
@@ -124,30 +137,40 @@ public class Server {
         private Server server;
         private User client;
 
-        public ClientHandler(Server server, User user) {
+        ClientHandler(Server server, User user) {
+            System.out.println("con");
             this.server = server;
             this.client = user;
-            System.out.println("is socket closed? start of client handler "+client.getSocket().isClosed());
+
         }
 
         @Override
         public void run() {
-            String message = "";
-            System.out.println("Is socket closed? (3) "+client.getSocket().isClosed());
-            Scanner scanner = new Scanner(client.getStreamIn());
+            System.out.println("start run!");
+            String message;
+            ObjectInputStream in = client.getStreamIn();
+            ObjectOutputStream out = client.getStreamOut();
             try {
-                System.out.println(client.getStreamIn().available());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            while(scanner.hasNextLine()) {
-                message = scanner.nextLine();
-                System.out.printf("Read %s%n", message);
+                while((message = (String) in.readObject()) != null) {
+                    System.out.printf("read %s%n",message);
+//                    out.writeObject(message);
+                    writeToAll(message);
+                    System.out.println("wrote!");
+
+                }
+            } catch (IOException | ClassNotFoundException e) {
+                if(e instanceof SocketException) {
+                    System.err.println("User disconnected! Ending thread.");
+                } else {
+                    System.err.println("Catastrophic error in ClientHandler!");
+                    e.printStackTrace();
+                }
+
             }
 
-            System.out.println("end of clienthandler thread");
             server.removeUser(client);
-            scanner.close();
+            System.out.println("end of handler!");
+
 
         }
     }

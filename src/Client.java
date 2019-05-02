@@ -20,13 +20,16 @@ public class Client {
     private JFrame frame;
     private JPanel panel;
     private Thread readThread;
-    private BufferedReader input;
-    private PrintWriter output;
+    //    private BufferedReader input;
+//    private PrintWriter output;
+    private ObjectOutputStream output;
+    private ObjectInputStream input;
     private static final String SERVER_ADDRESS = "127.0.0.1";
     private Socket socket;
     // private final ArrayList<User> userList;
     private User activeUser;
     private User recipient;
+    private boolean ready;
 
     private Client() {
         makeGUILookNice("Segoe UI Semilight", Font.PLAIN, 14);
@@ -77,52 +80,51 @@ public class Client {
         userField.requestFocus();
 
         logInButton.addActionListener(e -> {
-
             try {
                 try {
                     // make connection to server:
                     socket = new Socket(SERVER_ADDRESS,PORT);
                     System.out.println("Opened connection to server");
-                    try(ObjectOutputStream objOut = new ObjectOutputStream(socket.getOutputStream())) {
-                        ObjectInputStream objIn = new ObjectInputStream(socket.getInputStream());
-                        //send name to server to check if user exists:
-                        String enteredName = userField.getText();
-                        objOut.writeObject(enteredName);
-                        System.out.printf("Wrote name: %s%n", enteredName);
-                        char[] enteredPass = passField.getPassword();
-                        objOut.writeObject(enteredPass);
-                        System.out.printf("Wrote pass: %s%n", enteredPass);
-                        Object readObject = objIn.readObject();
-                        System.out.printf("Read object of type: %s%n", readObject.getClass());
-                        if(!(readObject instanceof NoUserException)) {
-                            System.out.println("Not NoUserException");
-                            Boolean auth = (Boolean) readObject;
-                            if(auth) {
-
-                                System.out.println("Logged in!");
-                                input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                                output = new PrintWriter(socket.getOutputStream(), true);
-                                output.println("sadasdasdasdasdasdadasd");
-                                new PopUp().infoBox("Successfully logged in as: "+enteredName);
-                                drawMainWindow();
-                                System.out.println("Main window drawn!");
-                            } else {
-                                new PopUp().errorBox("Wrong login information.");
-                                socket.close();
-                                System.out.println("Wrong pass!\nWebsocket closed!");
-                            }
+                    output = new ObjectOutputStream(socket.getOutputStream());
+                    input = new ObjectInputStream(socket.getInputStream());
+                    System.out.println("Opened streams!");
+                    //send name to server to check if user exists:
+                    String enteredName = userField.getText();
+                    output.writeObject(enteredName);
+                    System.out.printf("Wrote name: %s%n", enteredName);
+                    char[] enteredPass = passField.getPassword();
+                    output.writeObject(enteredPass);
+                    System.out.printf("Wrote pass: %s%n", enteredPass);
+                    Object readObject = input.readObject();
+                    System.out.printf("Read object of type: %s%n", readObject.getClass());
+                    if(!(readObject instanceof NoUserException)) {
+                        System.out.println("Not NoUserException");
+                        Boolean auth = (Boolean) readObject;
+                        if(auth) {
+                            System.out.println("Logged in!");
+//                                input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+//                                output = new PrintWriter(socket.getOutputStream(), true);
+                            //new PopUp().infoBox("Successfully logged in as: "+enteredName);
+                            ready = false;
+                            drawMainWindow();
+                            output.writeObject("READY");
+                            System.out.println("Main window drawn!");
+                            readThread = new Thread(new ReadThread());
+                            readThread.start();
+                            System.out.println("Started readthread!");
                         } else {
-                            NoUserException ex = (NoUserException) readObject;
-                            System.err.println("No user with entered name found!");
-                            ex.printStackTrace();
                             new PopUp().errorBox("Wrong login information.");
                             socket.close();
+                            System.out.println("Wrong pass!\nWebsocket closed!");
                         }
-//                        objIn.close();
-                        System.out.println("Closed stream!");
+                    } else {
+                        System.err.println("No user with entered name found!");
+                        new PopUp().errorBox("Wrong login information.");
+                        socket.close();
                     }
                 } catch(Exception ex) {
                     System.err.println("Error in connecting to server!");
+                    socket.close();
                     ex.printStackTrace();
                 }
             } catch (Exception ex) {
@@ -262,6 +264,8 @@ public class Client {
 
         sendButton.addActionListener(e -> sendMessage());
 
+
+
 //        String[] users = activeUser.getContacts().stream().map(b -> b.getUsername() + " | " + b.getStatus()).toArray(String[]::new);
 //
 //        JList<String> contactsList = new JList<>(users);
@@ -299,7 +303,7 @@ public class Client {
         try {
             String message = inputArea.getText().trim();
             if(message.equals("")) return;
-            output.println(message);
+            output.writeObject(message);
             System.out.printf("Wrote message %s%n", message);
             inputArea.requestFocus();
             inputArea.setText(null);
@@ -378,7 +382,7 @@ public class Client {
             String message;
             while(!Thread.currentThread().isInterrupted()) {
                 try {
-                    message = input.readLine();
+                    message = (String) input.readObject();
                     if(!message.isEmpty()) {
                         chatArea.append(message + "\n");
                     }

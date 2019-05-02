@@ -1,7 +1,4 @@
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
+import java.io.*;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -13,34 +10,37 @@ public class User implements java.io.Serializable {
     private String username;
     private static final String DEFAULT_UN = "admin";
     private static final char[] DEFUALT_PASS = {'a','d','m','i','n'};
+    private static final String TEST_UN = "test";
+    private static final char[] TEST_PASS = {'t','e','s','t'};
     private ArrayList<User> contacts;
     private Status status;
     private Socket socket;
-    private PrintStream streamOut;
-    private InputStream streamIn;
+    private ObjectOutputStream streamOut;
+    private ObjectInputStream streamIn;
 
-    User() {
-        username = DEFAULT_UN;
-        passwd = DEFUALT_PASS;
-        contacts = new ArrayList<>();
-        status = Status.OFF;
+    User(boolean isTestUser) {
+        if(isTestUser) {
+            username = TEST_UN;
+            passwd = TEST_PASS;
+            contacts = new ArrayList<>();
+            status = Status.OFF;
+        } else {
+            username = DEFAULT_UN;
+            passwd = DEFUALT_PASS;
+            contacts = new ArrayList<>();
+            status = Status.OFF;
+        }
     }
 
-    User(String username , char[] pass, Socket socket) {
+
+
+    User(String username , char[] pass, ObjectOutputStream out, ObjectInputStream in) {
         this.username = username;
         passwd = pass;
         status = Status.OFF;
-        System.out.println("Is socket closed? from user (1)"+socket.isClosed());
-        this.socket = socket;
-        System.out.println("Is socket closed? from user (2)"+this.socket.isClosed());
-        try {
-            this.streamIn = socket.getInputStream();
-            this.streamOut = new PrintStream(socket.getOutputStream());
-        } catch (IOException ex) {
-            System.err.println("Failed to create new user!\n");
-            ex.printStackTrace();
-        }
-
+        streamOut = out;
+        streamIn = in;
+        System.out.println("linked streams to user!");
         users++;
     }
 
@@ -66,34 +66,23 @@ public class User implements java.io.Serializable {
         return status.getText();
     }
 
-//    public Socket getSocket() {
-//        return socket;
-//    }
 
-//    public void connect(String address, int port) {
-//        try {
-//            socket = new Socket(address, port);
-//            System.out.printf("Connected user %s to server with address %s:%d%n", username, address, port);
-//        } catch(IOException ex) {
-//            System.err.println("Error in connecting UserSocket!");
-//
-//        }
-//    }
 
 
     public void setStatus(Status status) {
         this.status = status;
     }
 
-    public PrintStream getStreamOut() {
+    public ObjectOutputStream getStreamOut() {
         return streamOut;
     }
 
-    public InputStream getStreamIn() {
+    public ObjectInputStream getStreamIn() {
         return streamIn;
     }
 
     public Socket getSocket() {
         return socket;
     }
+
 }
