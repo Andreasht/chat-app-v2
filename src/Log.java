@@ -3,6 +3,11 @@ import java.io.IOException;
 
 import static andUtils.FileScanner.*;
 
+/*
+    THIS CLASS IS UNUSED FOR NOW.
+ */
+
+
 class Log implements java.io.Serializable {
     private User user1;
     private User user2;

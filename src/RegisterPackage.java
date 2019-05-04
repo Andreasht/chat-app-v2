@@ -12,7 +12,7 @@ class RegisterPackage implements Serializable {
         data.add(hashIn);
     }
 
-    public ArrayList<String> getData() {
+    ArrayList<String> getData() {
         return data;
     }
 }

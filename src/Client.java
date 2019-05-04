@@ -6,7 +6,6 @@ import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.*;
-import java.lang.reflect.Array;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,14 +32,9 @@ class Client {
 
     private Client() {
         makeGUILookNice("Segoe UI Semilight", Font.PLAIN, 14);
-
-//        userList = new ArrayList<>();
-//        userList.add(new User());
-//        userList.add(new User("test"));
-//        userList.add(new User("test2"));
-
         init();
     }
+
     private void init() {
 
         frame = new JFrame("Chat");
@@ -405,7 +399,7 @@ class Client {
                     System.out.println("Opened temp socket...");
                     ObjectOutputStream tempOut = new ObjectOutputStream(tempSocket.getOutputStream());
                     ObjectInputStream tempIn = new ObjectInputStream(tempSocket.getInputStream());
-                    Signal signal = Signal.TEST;
+                    Signal signal = Signal.CHECK;
                     tempOut.writeObject(signal);
                     System.out.println("Wrote signal...");
                     tempOut.writeObject(recipient);

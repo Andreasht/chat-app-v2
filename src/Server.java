@@ -3,11 +3,11 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import static andUtils.FileScanner.*;
 import static andUtils.SecurityUtils.*;
 @SuppressWarnings({"Duplicates", "ResultOfMethodCallIgnored"})
+
 class Server {
     private final int port;
     private ArrayList<User> activeClients;
@@ -50,9 +50,8 @@ class Server {
                         String receivedName = (String) objIn.readObject();
                         // receive pass
                         char[] receivedPass = (char[]) objIn.readObject();
-                        //check if login is ok
-                        System.out.printf("Received name and pass.\n%s\n%s%n", receivedName, Arrays.toString(receivedPass));
                         try {
+                            //check if login is ok
                             Boolean authenticated = auth(receivedName, receivedPass);
                             System.out.printf("authenticated: %s%n", authenticated);
                             //send result
@@ -110,9 +109,8 @@ class Server {
                         }
                         clientSocket.close();
 
-                    } else if(signalIn.equals(Signal.TEST)) {
-                        // danger zonee
-
+                    } else if(signalIn.equals(Signal.CHECK)) {
+                        // This request checks if the input user is online
                         String receivedName = (String) objIn.readObject();
                         System.out.println("Received name: "+receivedName);
                         objOut.writeObject(hasActiveUser(receivedName));
@@ -206,9 +204,7 @@ class Server {
         }
     }
 
-
-
-    void sendMessage(String msg, User sender, User receiver) throws IOException {
+    private void sendMessage(String msg, User sender, User receiver) throws IOException {
         receiver.getStreamOut().writeObject(msg);
         sender.getStreamOut().writeObject(msg);
     }

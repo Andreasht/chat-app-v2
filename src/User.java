@@ -5,23 +5,18 @@ import static andUtils.FileScanner.*;
 
 
 class User {
-    private static int users;
     private final String username;
     private ArrayList<String> contacts;
-    private Status status;
-    private Socket socket;
     private final ObjectOutputStream streamOut;
     private final ObjectInputStream streamIn;
     private final File contactsFile;
 
     User(String usernameIn, ObjectOutputStream out, ObjectInputStream in) {
         username = usernameIn;
-        status = Status.OFF;
         streamOut = out;
         streamIn = in;
         contactsFile = new File(String.format("UserInfo/%s/contacts.txt",usernameIn));
         initContacts();
-        users++;
         System.out.println("Created new user object!");
     }
 
@@ -29,26 +24,12 @@ class User {
         return username;
     }
 
-    String getStatus() {
-        // status = socket.isConnected() ? Status.ON : Status.OFF;
-      //  status = Status.OFF;
-        return status.getText();
-    }
-
-    public void setStatus(Status status) {
-        this.status = status;
-    }
-
-    public ObjectOutputStream getStreamOut() {
+    ObjectOutputStream getStreamOut() {
         return streamOut;
     }
 
-    public ObjectInputStream getStreamIn() {
+    ObjectInputStream getStreamIn() {
         return streamIn;
-    }
-
-    public Socket getSocket() {
-        return socket;
     }
 
     private void initContacts() {
@@ -88,7 +69,7 @@ class User {
         }
     }
 
-    public ArrayList<String> getContacts() {
+    ArrayList<String> getContacts() {
         return contacts;
     }
 
