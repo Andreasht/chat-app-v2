@@ -6,6 +6,7 @@ import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.*;
+import java.lang.reflect.Array;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,20 +18,18 @@ import static andUtils.SecurityUtils.*;
 @SuppressWarnings({"Duplicates", "OptionalGetWithoutIsPresent"})
 class Client {
     private static final int PORT = 50000;
+    private static final String SERVER_ADDRESS = "127.0.0.1";
     private JTextArea chatArea;
     private JTextField inputArea;
     private JFrame frame;
     private JPanel panel;
     private Thread readThread;
-    //    private BufferedReader input;
-//    private PrintWriter output;
     private ObjectOutputStream output;
     private ObjectInputStream input;
-    private static final String SERVER_ADDRESS = "127.0.0.1";
     private Socket socket;
-    // private final ArrayList<User> userList;
-    private User activeUser;
-    private User recipient;
+    private String activeUser;
+    private String recipient;
+    private ArrayList<String> contacts;
 
     private Client() {
         makeGUILookNice("Segoe UI Semilight", Font.PLAIN, 14);
@@ -104,110 +103,42 @@ class Client {
 
                     System.out.println("Wrote info to server.");
                     Object readObject = input.readObject();
-                    System.out.printf("Read object of type: %s%n", readObject.getClass());
-                    if(!(readObject instanceof NoUserException)) {
-                        System.out.println("Not NoUserException");
+                    if(!(readObject instanceof IllegalArgumentException)) {
                         Boolean auth = (Boolean) readObject;
                         if(auth) {
                             System.out.println("Logged in!");
-//                                input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-//                                output = new PrintWriter(socket.getOutputStream(), true);
-                            //new PopUp().infoBox("Successfully logged in as: "+enteredName);
+                            activeUser = enteredName;
+
+                            //get the users contacts:
+                            //noinspection unchecked
+                            contacts = (ArrayList<String>) input.readObject();
+                            System.out.println("Got contacts: "+contacts);
+                            new PopUp().infoBox("Successfully logged in as: "+enteredName);
                             drawMainWindow();
                             System.out.println("Main window drawn!");
                             readThread = new Thread(new ReadThread());
                             readThread.start();
                             System.out.println("Started readthread!");
+
                         } else {
                             new PopUp().errorBox("Wrong login information.");
                             socket.close();
                             System.out.println("Wrong pass!\nWebsocket closed!");
                         }
                     } else {
-                        NoUserException exc = (NoUserException) readObject;
-                        exc.printStackTrace();
+                        ((IllegalArgumentException) readObject).printStackTrace();
                         new PopUp().errorBox("Wrong login information.");
 
                         socket.close();
                     }
                 } catch(Exception ex) {
                     System.err.println("Error in connecting to server!");
-                    socket.close();
-                    ex.printStackTrace();
+                    new PopUp().errorBox("Couldn't connect to the server. Please wait a moment before trying again.");
                 }
             } catch (Exception ex) {
                 System.err.println("Some weird exception!");
                 ex.printStackTrace();
             }
-            System.out.println("Connected: "+socket.isConnected());
-
-//            try {
-//                User temp = Server.getUser(userField.getText());
-//                if(temp.authenticate(passField.getPassword())) {
-//                    new PopUp().infoBox(String.format("Logged in as: %s",temp.getUsername()));
-//                    activeUser = temp;
-//
-//                    try {
-//                        socket = new Socket(SERVER_ADDRESS,PORT);
-//                        activeUser.setStatus(Status.ON);
-//                        input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-//                        output = new PrintWriter(socket.getOutputStream());
-//                    } catch(IOException exc) {
-//                        System.err.println("Couldn't connect to server!\n");
-//                        exc.printStackTrace();
-//                    }
-//                    System.out.println(activeUser.getStatus());
-//                    try (ObjectOutputStream objOut = new ObjectOutputStream(socket.getOutputStream())) {
-//                        objOut.writeObject(activeUser);
-//                        System.out.println("Wrote user to server!");
-//                    } catch (Exception ex) {
-//                        ex.printStackTrace();
-//                    }
-//
-//                    drawMainWindow();
-//                } else {
-//                    new PopUp().errorBox("Incorrect login information.");
-//                }
-//            } catch (NoUserException ex) {
-//                new PopUp().errorBox("Incorrect login information.");
-//            }
-
-
-
-
-//            boolean foundUser = false;
-//            for(User b : userList) {
-//                if(b.getUsername().equals(userField.getText())) {
-//                    foundUser = true;
-//                    //noinspection PointlessBooleanExpression
-//                    if(b.authenticate(passField.getPassword()) == true) {
-//                        new PopUp().infoBox("Du er nu logget ind som: "+b.getUsername());
-//                        activeUser = b;
-//
-//                        try {
-//                            socket = new Socket(SERVER_ADDRESS,PORT);
-//                            activeUser.setStatus(Status.ON);
-//                            input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-//                            output= new PrintWriter(socket.getOutputStream());
-//                        } catch (IOException e1) {
-//                            e1.printStackTrace();
-//                            System.out.println("Couldn't connect to server!");
-//                        }
-//                        System.out.println(activeUser.getStatus());
-//                        try (ObjectOutputStream objOut = new ObjectOutputStream(socket.getOutputStream())) {
-//                            objOut.writeObject(activeUser);
-//                            System.out.println("Wrote user to server!");
-//                        } catch (Exception ex) {
-//                            ex.printStackTrace();
-//                        }
-//
-//                        drawMainWindow();
-//                    } else new PopUp().infoBox("Forkert kodeord. Prøv igen.");
-//                }
-//            }
-//            if(!foundUser) {
-//                new PopUp().infoBox("Ingen bruger med dette navn fundet.");
-//            }
         });
 
         registerButton.addActionListener(e -> drawRegister());
@@ -254,42 +185,74 @@ class Client {
             }
         });
 
-//        findButton.addActionListener(e -> {
-//            String addedContact = JOptionPane.showInputDialog(null,"Find contact:","Add new contact",JOptionPane.PLAIN_MESSAGE);
-//            boolean found = false;
-//            for(User user : userList) {
-//                if(addedContact.equals(user.getUsername())) {
-//                    activeUser.addContact(user);
-//                    found = true;
-//                    new PopUp().infoBox("New contact added: " + user.getUsername());
-//                    new Log(activeUser,user).createLog();
-//                    drawMainWindow();
-//                }
-//            }
-//            if(!found) {
-//                new PopUp().infoBox("No user with this username found.");
-//            }
-//        });
+        findButton.addActionListener(e -> {
+            String addedContact = JOptionPane.showInputDialog(null,"Find contact:","Add new contact",JOptionPane.PLAIN_MESSAGE);
+            boolean found = false;
+            Signal signal = Signal.CON;
+            try {
+                Socket tempSocket = new Socket(SERVER_ADDRESS,PORT);
+                ObjectOutputStream tempOut = new ObjectOutputStream(tempSocket.getOutputStream());
+                ObjectInputStream tempIn = new ObjectInputStream(tempSocket.getInputStream());
+                // send addcontact signal:
+                tempOut.writeObject(signal);
+
+                // send active user:
+                tempOut.writeObject(activeUser);
+
+                // send name of added contact:
+                tempOut.writeObject(addedContact);
+
+                System.out.println("Finished sending addcontact req!");
+
+                // get success message:
+                Object readObject = tempIn.readObject();
+                if(!(readObject instanceof IllegalArgumentException)) {
+                    System.out.println("Added contact successfully!");
+                    found = true;
+                    // get newly updated contact list:
+                    // noinspection unchecked
+                    contacts = (ArrayList<String>) readObject;
+                    System.out.printf("Contacts: %s%n", contacts);
+                    new PopUp().infoBox("Added new contact!");
+                    drawMainWindow();
+                } else {
+                    System.err.println("Couldn't add contact!");
+                    ((IllegalArgumentException) readObject).printStackTrace();
+                    if(((IllegalArgumentException) readObject).getMessage().equals("User already has this contact!")) {
+                        found = true;
+                        new PopUp().errorBox("You already have this contact.");
+                    } else if(((IllegalArgumentException) readObject).getMessage().equals("Can't add yourself!")) {
+                        found = true;
+                        new PopUp().errorBox("You cannot add yourself as a contact!");
+                    }
+                }
+                tempSocket.close();
+            } catch (IOException | ClassNotFoundException e1) {
+                e1.printStackTrace();
+            }
+            if(!found) {
+                new PopUp().errorBox("No user with this username found.");
+            }
+        });
 
         sendButton.addActionListener(e -> sendMessage());
 
 
 
-//        String[] users = activeUser.getContacts().stream().map(b -> b.getUsername() + " | " + b.getStatus()).toArray(String[]::new);
-//
-//        JList<String> contactsList = new JList<>(users);
-//        JScrollPane listScroller = new JScrollPane(contactsList);
-//        listScroller.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-//        listScroller.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
-//        listScroller.setBounds(25,25,160,320);
-//
-//
-//        contactsList.addListSelectionListener(new ListListener());
+        String[] users = contacts.toArray(String[]::new);
+        JList<String> contactsList = new JList<>(users);
+        JScrollPane listScroller = new JScrollPane(contactsList);
+        listScroller.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        listScroller.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+        listScroller.setBounds(25,25,160,320);
+
+
+        contactsList.addListSelectionListener(new ListListener());
 //        chatArea.getDocument().addDocumentListener(new ChatListener());
 
         panel.add(chatPane);
         panel.add(inputPane);
-//        panel.add(listScroller);
+        panel.add(listScroller);
         panel.add(sendButton);
         panel.add(findButton);
         refreshFrame();
@@ -353,7 +316,7 @@ class Client {
 
                     // get success signal:
                     Object readObject = input.readObject();
-                    if(!(readObject instanceof ExistingUserException)) {
+                    if(!(readObject instanceof IllegalArgumentException)) {
                         Boolean registerSucceeded = (Boolean) readObject;
                         if(registerSucceeded) {
                             new PopUp().infoBox("Registered successfully! Returning to login screen.");
@@ -365,8 +328,7 @@ class Client {
                             socket.close();
                         }
                     } else {
-                        ExistingUserException ex = (ExistingUserException) readObject;
-                        ex.printStackTrace();
+                        ((IllegalArgumentException) readObject).printStackTrace();
                         new PopUp().errorBox("Username taken!");
                         socket.close();
                     }
@@ -398,7 +360,7 @@ class Client {
         try {
             String message = inputArea.getText().trim();
             if(message.equals("")) return;
-            output.writeObject(message);
+            output.writeObject(recipient+"|"+message);
             System.out.printf("Wrote message %s%n", message);
             inputArea.requestFocus();
             inputArea.setText(null);
@@ -432,22 +394,41 @@ class Client {
 
         @Override
         public void valueChanged(ListSelectionEvent e) {
-//            readThread.interrupt();
-//            JList list = (JList) e.getSource();
-//            String[] value = ((String) list.getSelectedValue()).split(" ");
-//            String name = value[0];
-//            if(!e.getValueIsAdjusting()) {
-//                for(User u : userList) {
-//                    if (name.equals(u.getUsername())) {
-//                        recipient = u;
-//                    }
-//                }
-//            }
-//            if(Log.logExists(activeUser, recipient)) {
-//                chatArea.setText(Log.getLog(activeUser,recipient));
-//            }
-//            readThread = new Thread(new ReadThread());
-//            readThread.start();
+            JList list = (JList) e.getSource();
+            String[] value = ((String) list.getSelectedValue()).split(" ");
+            String name = value[0];
+            recipient = name;
+            System.out.printf("Changed recipient: %s%n", recipient);
+            if(!e.getValueIsAdjusting() && !name.equals("")) {
+                try {
+                    Socket tempSocket = new Socket(SERVER_ADDRESS,PORT);
+                    System.out.println("Opened temp socket...");
+                    ObjectOutputStream tempOut = new ObjectOutputStream(tempSocket.getOutputStream());
+                    ObjectInputStream tempIn = new ObjectInputStream(tempSocket.getInputStream());
+                    Signal signal = Signal.TEST;
+                    tempOut.writeObject(signal);
+                    System.out.println("Wrote signal...");
+                    tempOut.writeObject(recipient);
+                    System.out.println("Wrote recipient name...");
+                    Boolean isOnline = (Boolean) tempIn.readObject();
+                    if(!isOnline) {
+                        System.out.println("Not online!");
+                        inputArea.setEditable(false);
+                        chatArea.setText("User is offline.");
+                    } else {
+                        System.out.println("Online!");
+                        inputArea.setEditable(true);
+                        chatArea.setText("");
+
+                        System.out.println("ReadThread started!");
+                    }
+                    tempSocket.close();
+                    System.out.println("Closed socket.");
+                } catch (IOException | ClassNotFoundException e1) {
+                    e1.printStackTrace();
+                }
+
+            }
         }
     }
 
@@ -471,18 +452,22 @@ class Client {
 //    }
 
     class ReadThread implements Runnable {
-
         @Override
         public void run() {
             String message;
             while(!Thread.currentThread().isInterrupted()) {
                 try {
                     message = (String) input.readObject();
+                    String[] msgSplit = message.split(":");
+                    String sender = msgSplit[0];
                     if(!message.isEmpty()) {
-                        chatArea.append(message + "\n");
+                        if(sender.equals(activeUser) || sender.equals(recipient)) {
+                            chatArea.append(message + "\n");
+                        }
                     }
                 } catch(Exception ex) {
                     System.err.println("failed to parse incoming message");
+                    ex.printStackTrace();
                 }
             }
         }

@@ -10,7 +10,7 @@ import static andUtils.SecurityUtils.*;
 @SuppressWarnings({"Duplicates", "ResultOfMethodCallIgnored"})
 class Server {
     private final int port;
-    private final ArrayList<User> activeClients;
+    private ArrayList<User> activeClients;
 
     public static void main(String[] args) {
         new Server();
@@ -44,8 +44,8 @@ class Server {
                 try {
                     // receive type signal
                     Signal signalIn = (Signal) objIn.readObject();
+                    System.out.printf("Received signal of type %s.",signalIn.getType());
                     if(signalIn.equals(Signal.LOGIN)) {
-                        System.out.println("Received signal of type LOGIN. Treating event as login request.");
                         // receive name
                         String receivedName = (String) objIn.readObject();
                         // receive pass
@@ -63,6 +63,10 @@ class Server {
                                 activeClients.add(connectingUser);
                                 System.out.println("added client to active clients");
 
+                                // send users contacts to client:
+                                objOut.writeObject(connectingUser.getContacts());
+
+                                // start a clienthandler thread for the new user:
                                 new Thread(new ClientHandler(this, connectingUser)).start();
 
                                 System.out.println("Started new ClientHandler linked to connecting client!");
@@ -72,12 +76,12 @@ class Server {
                                 clientSocket.close();
                             }
 
-                        } catch(NoUserException ex) {
-                            System.err.println("No user exception!\n");
+                        } catch(IllegalArgumentException ex) {
+                            System.err.println("No user found!");
                             objOut.writeObject(ex);
                         }
+
                     } else if(signalIn.equals(Signal.REG)) {
-                        System.out.println("Received signal of type REGISTER. Treating event as register request.");
                         RegisterPackage registerPackageIn = (RegisterPackage) objIn.readObject();
                         System.out.println("Got register package!");
                         try {
@@ -86,12 +90,32 @@ class Server {
                                 System.out.println("Registered user!");
                             }
                             objOut.writeObject(success);
-                        } catch (ExistingUserException ex) {
-                            System.err.println("ExistingUserException thrown");
+                        } catch (IllegalArgumentException ex) {
+                            System.err.println("IllegalArgumentException thrown");
                             objOut.writeObject(ex);
                         }
-
                         clientSocket.close();
+
+                    } else if(signalIn.equals(Signal.CON)) {
+                        String receivedActiveName = (String) objIn.readObject();
+                        String receivedContactName = (String) objIn.readObject();
+                        User activeUser = getActiveUser(receivedActiveName);
+                        try {
+                            activeUser.addContact(receivedContactName);
+                            System.out.println("Added contact!");
+                            System.out.println(activeUser.getContacts());
+                            objOut.writeObject(activeUser.getContacts());
+                        } catch (IllegalArgumentException ex) {
+                            objOut.writeObject(ex);
+                        }
+                        clientSocket.close();
+
+                    } else if(signalIn.equals(Signal.TEST)) {
+                        // danger zonee
+
+                        String receivedName = (String) objIn.readObject();
+                        System.out.println("Received name: "+receivedName);
+                        objOut.writeObject(hasActiveUser(receivedName));
                     }
                 }    catch(ClassNotFoundException ex) {
                     System.err.println("Error in reading object input stream!");
@@ -110,28 +134,40 @@ class Server {
         activeClients.remove(user);
     }
 
-//    private User getUser(String name) {
-//        for (User user : registeredClients) {
-//            if(user.getUsername().equals(name)) return user;
-//        }
-//        throw new NoUserException();
-//    }
+    static Boolean hasRegisteredUser(String name) {
+        return new File(String.format("UserInfo/%s", name)).exists();
+    }
 
     private Boolean auth(String name, char[] pass) {
         //check if the user is registered:
-        File infoDir = new File(String.format("UserInfo/%s", name));
-        if(infoDir.exists()) {
+        if(hasRegisteredUser(name)) {
+            // get then info and authenticate
             String filePath = String.format("UserInfo/%s/%s.txt",name,name);
-            String[] userInfo = readFromFile(filePath).split(" ");
-            String salt = userInfo[1];
-            String hash = userInfo[2];
+            ArrayList<String> userInfo = readEachLine(filePath);
+            String salt = userInfo.get(1);
+            String hash = userInfo.get(2);
             return authenticate(pass, salt, hash);
         }
 
         // if not, throw exception:
-        throw new NoUserException();
+        throw new IllegalArgumentException("No user with this name found!");
     }
 
+    private User getActiveUser(String name) {
+        // return active client with given name:
+        for (User client : activeClients) {
+            if(client.getUsername().equals(name)) return client;
+        }
+        System.out.println("how tf did this happen");
+        throw new IllegalArgumentException();
+    }
+
+    private Boolean hasActiveUser(String name) {
+        for(User client : activeClients) {
+            if(client.getUsername().equals(name)) return true;
+        }
+        return false;
+    }
 
     private void writeToAll(Object input) {
         for(User client : activeClients) {
@@ -147,13 +183,12 @@ class Server {
 
         StringBuilder toWrite = new StringBuilder();
         for(String line : registerPackage.getData()) {
-            toWrite.append(line).append(" ");
+            toWrite.append(line).append("\n");
         }
-
         String name = registerPackage.getData().get(0);
         File personalDirectory = new File(String.format("UserInfo/%s", name));
         if(personalDirectory.exists()) {
-            throw new ExistingUserException();
+            throw new IllegalArgumentException("User with this name already exists!");
         }
         personalDirectory.mkdir();
         System.out.println("Created personal directory...");
@@ -173,12 +208,11 @@ class Server {
 
 
 
-    //    void sendMessage(String msg, User sender, String receiver) {
-//        boolean find = false;
-//        for(User client : activeClients) {
-//            if (client.getU)
-//        }
-//    }
+    void sendMessage(String msg, User sender, User receiver) throws IOException {
+        receiver.getStreamOut().writeObject(msg);
+        sender.getStreamOut().writeObject(msg);
+    }
+
     class ClientHandler implements Runnable {
         private final Server server;
         private final User client;
@@ -198,11 +232,11 @@ class Server {
             ObjectOutputStream out = client.getStreamOut();
             try {
                 while((message = (String) in.readObject()) != null) {
-                    System.out.printf("read %s%n",message);
-//                    out.writeObject(message);
-                    writeToAll(client.getUsername()+": "+message);
+                    String[] msgSplit = message.split("\\|");
+                    User recipient = getActiveUser(msgSplit[0]);
+                    String msg = msgSplit[1];
+                    sendMessage(client.getUsername()+": "+msg,client,recipient);
                     System.out.println("wrote!");
-
                 }
             } catch (IOException | ClassNotFoundException e) {
                 if(e instanceof SocketException) {
@@ -221,5 +255,6 @@ class Server {
 
         }
     }
+
 
 }

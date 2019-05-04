@@ -1,39 +1,32 @@
 import java.io.*;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import static andUtils.FileScanner.*;
 
-class User implements java.io.Serializable {
+
+class User {
     private static int users;
-
-    private String username;
-
-    private ArrayList<User> contacts;
+    private final String username;
+    private ArrayList<String> contacts;
     private Status status;
     private Socket socket;
-    private ObjectOutputStream streamOut;
-    private ObjectInputStream streamIn;
+    private final ObjectOutputStream streamOut;
+    private final ObjectInputStream streamIn;
+    private final File contactsFile;
 
-    User(String username, ObjectOutputStream out, ObjectInputStream in) {
-        this.username = username;
+    User(String usernameIn, ObjectOutputStream out, ObjectInputStream in) {
+        username = usernameIn;
         status = Status.OFF;
         streamOut = out;
         streamIn = in;
-        System.out.println("linked streams to user!");
+        contactsFile = new File(String.format("UserInfo/%s/contacts.txt",usernameIn));
+        initContacts();
         users++;
+        System.out.println("Created new user object!");
     }
 
     String getUsername() {
         return username;
-    }
-
-    ArrayList<User> getContacts() {
-        return contacts;
-    }
-
-    void addContact(User user) {
-        contacts.add(user);
     }
 
     String getStatus() {
@@ -58,4 +51,51 @@ class User implements java.io.Serializable {
         return socket;
     }
 
+    private void initContacts() {
+        if(!contactsFile.exists()) {
+            try {
+                contactsFile.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        refreshContacts();
+    }
+
+    private void refreshContacts() {
+        contacts = readEachLine(contactsFile.getPath());
+    }
+
+    void addContact(String name) {
+        if(Server.hasRegisteredUser(name)) {
+            try {
+                if(!hasContact(name)) {
+                    if(!username.equals(name)) {
+                        String previousContent = readFromFile(contactsFile.getPath());
+                        writeToFile(contactsFile.getPath(),previousContent+name+"\n");
+                        refreshContacts();
+                    } else {
+                        throw new IllegalArgumentException("Can't add yourself!");
+                    }
+                } else {
+                    throw new IllegalArgumentException("User already has this contact!");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            throw new IllegalArgumentException("Couldn't add contact. No user with this name is registered!");
+        }
+    }
+
+    public ArrayList<String> getContacts() {
+        return contacts;
+    }
+
+    private boolean hasContact(String name) {
+        for(String contact : contacts) {
+            if(contact.equals(name)) return true;
+        }
+        return false;
+    }
 }

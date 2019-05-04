@@ -1,6 +1,8 @@
 public enum Signal {
     LOGIN("LOGIN"),
-    REG("REGISTER");
+    REG("REGISTER"),
+    CON("ADDCONTACT"),
+    TEST("TEST");
 
 
     private final String signalType;

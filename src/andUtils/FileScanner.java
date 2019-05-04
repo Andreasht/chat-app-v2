@@ -29,7 +29,7 @@ public final class FileScanner {
 
 	}
 
-	private static ArrayList<String> readEachLine(String filePath) {
+	public static ArrayList<String> readEachLine(String filePath) {
 		ArrayList<String> list = new ArrayList<>();
 		File file = new File(filePath);
 		if(file.exists()) {
