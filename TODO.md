@@ -5,10 +5,11 @@
 - [X] Basic server
 - [X] Connect to server
 - [X] Basic functionality (login -> read/write)
-- [ ] **Registering users**
-- [ ] Adding contacts
+- [X] Registering users (now with actual security measures!!!)
+- [ ] **Adding contacts**
 - [ ] Advanced functionality (Private messaging)
 - [ ] Final tweaks
 
 #### Known bugs:
-- [ ] Log in as already logged in user
+- [X] Log in as already logged in user
+- [ ] Fucking everything

@@ -1,9 +1,11 @@
 import java.io.File;
+import java.io.IOException;
+
 import static andUtils.FileScanner.*;
 
-public class Log implements java.io.Serializable {
-    User user1;
-    User user2;
+class Log implements java.io.Serializable {
+    private User user1;
+    private User user2;
     private static final File LOGS_DIR = new File("ChatLogs");
     private File logsFolder;
     private String finalPath;
@@ -19,7 +21,7 @@ public class Log implements java.io.Serializable {
         createLog();
     }
 
-    void createLog() {
+    private void createLog() {
         if(!logsFolder.exists()) {
             System.out.println("No log found. Directory will be created...");
             logsFolder.mkdir();
@@ -31,7 +33,11 @@ public class Log implements java.io.Serializable {
         String fileName = user1.getUsername()+"+"+user2.getUsername();
         String logPath = LOGS_DIR + "/" + fileName;
 
-        writeToFile(String.format("%s/%s.txt", logPath, fileName), in);
+        try {
+            writeToFile(String.format("%s/%s.txt", logPath, fileName), in);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
     }
 

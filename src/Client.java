@@ -6,14 +6,16 @@ import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.*;
-
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 
 import static andUtils.Utils.*;
+import static andUtils.SecurityUtils.*;
 
-public class Client {
+@SuppressWarnings({"Duplicates", "OptionalGetWithoutIsPresent"})
+class Client {
     private static final int PORT = 50000;
     private JTextArea chatArea;
     private JTextField inputArea;
@@ -29,7 +31,6 @@ public class Client {
     // private final ArrayList<User> userList;
     private User activeUser;
     private User recipient;
-    private boolean ready;
 
     private Client() {
         makeGUILookNice("Segoe UI Semilight", Font.PLAIN, 14);
@@ -60,13 +61,13 @@ public class Client {
         fields.add(userField);
         fields.add(passField);
 
-        int y = 100;
+        int y = 60;
         for(JLabel l : labels) {
             l.setBounds(200, y, 150, 150);
             y = y + 100;
             panel.add(l);
         }
-        y = 150;
+        y = 110;
         for(JTextComponent f : fields) {
             f.setBounds(330,y,150,50);
             y = y + 100;
@@ -74,8 +75,11 @@ public class Client {
         }
 
         JButton logInButton = new JButton("Login");
-        logInButton.setBounds(250, 350,200,50);
+        logInButton.setBounds(250, 310,200,50);
         panel.add(logInButton);
+        JButton registerButton = new JButton("Register");
+        registerButton.setBounds(250, 380,200,50);
+        panel.add(registerButton);
 
         userField.requestFocus();
 
@@ -88,13 +92,17 @@ public class Client {
                     output = new ObjectOutputStream(socket.getOutputStream());
                     input = new ObjectInputStream(socket.getInputStream());
                     System.out.println("Opened streams!");
+                    //send "login" signal to server:
+                    Signal loginSignal = Signal.LOGIN;
+                    output.writeObject(loginSignal);
+
                     //send name to server to check if user exists:
                     String enteredName = userField.getText();
                     output.writeObject(enteredName);
-                    System.out.printf("Wrote name: %s%n", enteredName);
                     char[] enteredPass = passField.getPassword();
                     output.writeObject(enteredPass);
-                    System.out.printf("Wrote pass: %s%n", enteredPass);
+
+                    System.out.println("Wrote info to server.");
                     Object readObject = input.readObject();
                     System.out.printf("Read object of type: %s%n", readObject.getClass());
                     if(!(readObject instanceof NoUserException)) {
@@ -105,9 +113,7 @@ public class Client {
 //                                input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 //                                output = new PrintWriter(socket.getOutputStream(), true);
                             //new PopUp().infoBox("Successfully logged in as: "+enteredName);
-                            ready = false;
                             drawMainWindow();
-                            output.writeObject("READY");
                             System.out.println("Main window drawn!");
                             readThread = new Thread(new ReadThread());
                             readThread.start();
@@ -118,8 +124,10 @@ public class Client {
                             System.out.println("Wrong pass!\nWebsocket closed!");
                         }
                     } else {
-                        System.err.println("No user with entered name found!");
+                        NoUserException exc = (NoUserException) readObject;
+                        exc.printStackTrace();
                         new PopUp().errorBox("Wrong login information.");
+
                         socket.close();
                     }
                 } catch(Exception ex) {
@@ -202,6 +210,7 @@ public class Client {
 //            }
         });
 
+        registerButton.addActionListener(e -> drawRegister());
         frame.setContentPane(panel);
         frame.setSize(700,500);
         frame.setResizable(false);
@@ -287,6 +296,92 @@ public class Client {
 
     }
 
+    private void drawRegister() {
+        redrawBasic();
+
+        ArrayList<JLabel> labels = new ArrayList<>();
+        labels.add(new JLabel("Username: "));
+        labels.add(new JLabel("Password: "));
+        labels.add(new JLabel("Confirm password: "));
+
+        JTextField userField = new JTextField();
+        JPasswordField passField = new JPasswordField();
+        JPasswordField confirmField = new JPasswordField();
+
+        ArrayList<JTextComponent> fields = new ArrayList<>();
+        fields.add(userField);
+        fields.add(passField);
+        fields.add(confirmField);
+
+        int y = 50;
+        for(JLabel l : labels) {
+            l.setBounds(200, y, 150, 150);
+            y = y + 100;
+            panel.add(l);
+        }
+        y = 100;
+        for(JTextComponent f : fields) {
+            f.setBounds(330,y,150,50);
+            y = y + 100;
+            panel.add(f);
+        }
+
+        JButton registerButton = new JButton("Register user");
+        registerButton.setBounds(250, 375,200,50);
+        panel.add(registerButton);
+
+        registerButton.addActionListener(e -> {
+            boolean matches = Arrays.equals(passField.getPassword(), confirmField.getPassword());
+            if(matches) {
+                String enteredName = userField.getText();
+                String newSalt = generateSalt(160).get();
+                String securePassword = hashPassword(passField.getPassword(),newSalt).get();
+                RegisterPackage pack = new RegisterPackage(enteredName,newSalt,securePassword);
+                try {
+                    socket = new Socket(SERVER_ADDRESS,PORT);
+                    output = new ObjectOutputStream(socket.getOutputStream());
+                    input = new ObjectInputStream(socket.getInputStream());
+
+                    // create new signal and send it to server so it knows this is a register request:
+                    Signal registerSignal = Signal.REG;
+                    output.writeObject(registerSignal);
+                    System.out.println("Wrote register signal!");
+
+                    //write register package:
+                    output.writeObject(pack);
+                    System.out.println("Wrote register package!");
+
+                    // get success signal:
+                    Object readObject = input.readObject();
+                    if(!(readObject instanceof ExistingUserException)) {
+                        Boolean registerSucceeded = (Boolean) readObject;
+                        if(registerSucceeded) {
+                            new PopUp().infoBox("Registered successfully! Returning to login screen.");
+                            socket.close();
+                            frame.dispose();
+                            init();
+                        } else {
+                            new PopUp().errorBox("Error occurred during registering. Please wait a moment before trying again.");
+                            socket.close();
+                        }
+                    } else {
+                        ExistingUserException ex = (ExistingUserException) readObject;
+                        ex.printStackTrace();
+                        new PopUp().errorBox("Username taken!");
+                        socket.close();
+                    }
+
+                } catch (IOException | ClassNotFoundException e1) {
+                    e1.printStackTrace();
+                }
+            } else {
+                new PopUp().errorBox("Passwords don't match!");
+            }
+        });
+
+        refreshFrame();
+    }
+
     private void redrawBasic() {
         frame.getContentPane().removeAll();
         panel = new JPanel(null);
@@ -333,7 +428,7 @@ public class Client {
         }
     }
 
-    class ListListener implements ListSelectionListener {
+    private class ListListener implements ListSelectionListener {
 
         @Override
         public void valueChanged(ListSelectionEvent e) {

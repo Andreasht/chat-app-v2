@@ -1,5 +1,5 @@
-public class NoUserException extends RuntimeException {
+class NoUserException extends RuntimeException {
     public NoUserException() {
-        super();
+        super("No user with the entered name was found in the database");
     }
 }

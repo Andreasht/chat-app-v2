@@ -30,7 +30,7 @@ public final class Utils {
 		return out;
 	}
 
-	public static HashMap<Integer, Integer> sortByValue(Map<Integer, Integer> unsortedMap, final boolean order) {
+	private static HashMap<Integer, Integer> sortByValue(Map<Integer, Integer> unsortedMap, final boolean order) {
 		//Ascending: input true
 		//Descending: input false
 		List<Entry<Integer, Integer>> list = new LinkedList<>(unsortedMap.entrySet());
@@ -55,7 +55,7 @@ public final class Utils {
 		return list.stream().collect(Collectors.toMap(Entry::getKey, Entry::getValue, (a, b) -> b, LinkedHashMap::new));
 	}
 	
-	public static HashMap<Integer,Integer> getIntFrequencies(ArrayList<Integer> list) {
+	private static HashMap<Integer,Integer> getIntFrequencies(ArrayList<Integer> list) {
 		HashMap<Integer,Integer> map = new HashMap<>();
 		list.forEach(Integer -> map.put(Integer, map.getOrDefault(Integer, 0)+1));
 		return map;
@@ -79,7 +79,7 @@ public final class Utils {
 		list.removeAll(Collections.singleton(Character.toUpperCase(c)));
 	}
 
-	public static void setUIFont(String fontName, int style, int size){
+	private static void setUIFont(String fontName, int style, int size){
 		javax.swing.plaf.FontUIResource f = new javax.swing.plaf.FontUIResource(fontName, style, size);
 		Enumeration keys = UIManager.getDefaults().keys();
 		while (keys.hasMoreElements()) {

@@ -10,10 +10,10 @@ import java.util.ArrayList;
 
 public final class FileScanner {
 
-	public static String readFromFile(String f) {
+	public static String readFromFile(String filePath) {
 		String read = "";
 		try {
-			read = new String(Files.readAllBytes(Paths.get(f)));
+			read = new String(Files.readAllBytes(Paths.get(filePath)));
 		} catch(IOException e) {
 			e.printStackTrace();
 		}
@@ -21,22 +21,17 @@ public final class FileScanner {
         return read;
     }
 	
-	public static void writeToFile(String s, String f) {
+	public static void writeToFile(String filePath, String contentToWrite) throws IOException {
 
-        Path path = Paths.get(s);
-        byte[] data = f.getBytes();
-        try {
-            Files.write(path, data);
-
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
+        Path path = Paths.get(filePath);
+        byte[] data = contentToWrite.getBytes();
+		Files.write(path, data);
 
 	}
 
-	public static ArrayList<String> readEachLine(String f) {
+	private static ArrayList<String> readEachLine(String filePath) {
 		ArrayList<String> list = new ArrayList<>();
-		File file = new File(f);
+		File file = new File(filePath);
 		if(file.exists()) {
 			try {
 				list = (ArrayList<String>) Files.readAllLines(file.toPath(),Charset.defaultCharset());
@@ -48,8 +43,8 @@ public final class FileScanner {
 		return list;
 	}
 
-	public static ArrayList<Integer> readEachInt(String f) {
-		return Utils.toIntArray(readEachLine(f));
+	public static ArrayList<Integer> readEachInt(String filePath) {
+		return Utils.toIntArray(readEachLine(filePath));
 	}
 
 }

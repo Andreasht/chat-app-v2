@@ -3,7 +3,7 @@ package andUtils;
 
 import java.io.*;
 
-public final class Serializer {
+final class Serializer {
     public static void serialize(Object obj, String path) {
         try {
             FileOutputStream fileOut = new FileOutputStream(path);
