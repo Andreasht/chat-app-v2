@@ -167,15 +167,15 @@ class Server {
         return false;
     }
 
-    private void writeToAll(Object input) {
-        for(User client : activeClients) {
-            try {
-                client.getStreamOut().writeObject(input);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
+//    private void writeToAll(Object input) {
+//        for(User client : activeClients) {
+//            try {
+//                client.getStreamOut().writeObject(input);
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        }
+//    }
 
     private Boolean registerUser(RegisterPackage registerPackage) {
 
@@ -207,6 +207,8 @@ class Server {
     private void sendMessage(String msg, User sender, User receiver) throws IOException {
         receiver.getStreamOut().writeObject(msg);
         sender.getStreamOut().writeObject(msg);
+        Log.writeToLog(sender,receiver,msg);
+        System.out.println("Wrote log!");
     }
 
     class ClientHandler implements Runnable {
@@ -237,7 +239,6 @@ class Server {
             } catch (IOException | ClassNotFoundException e) {
                 if(e instanceof SocketException) {
                     System.out.println("User disconnected! Ending thread.\n");
-                    writeToAll("User "+client.getUsername()+" disconnected.");
                 } else {
                     System.err.println("Catastrophic error in ClientHandler!");
                     e.printStackTrace();

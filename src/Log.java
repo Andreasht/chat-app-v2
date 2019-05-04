@@ -2,55 +2,58 @@ import java.io.File;
 import java.io.IOException;
 
 import static andUtils.FileScanner.*;
-
-/*
-    THIS CLASS IS UNUSED FOR NOW.
- */
-
-
-class Log implements java.io.Serializable {
+@SuppressWarnings("Duplicates")
+final class Log implements java.io.Serializable {
     private User user1;
     private User user2;
-    private static final File LOGS_DIR = new File("ChatLogs");
-    private File logsFolder;
-    private String finalPath;
+    private static final File LOGS_DIR;
 
-    Log(User from, User to) {
+    static {
+        LOGS_DIR = new File("ChatLogs");
         if(!LOGS_DIR.exists()) LOGS_DIR.mkdir();
-        user1 = from;
-        user2 = to;
-        String fileName = from.getUsername()+"+"+to.getUsername();
-        String logPath = LOGS_DIR + "/" + fileName;
-        logsFolder = new File(logPath);
-        finalPath = logPath+"/"+fileName+".txt";
-        createLog();
-    }
-
-    private void createLog() {
-        if(!logsFolder.exists()) {
-            System.out.println("No log found. Directory will be created...");
-            logsFolder.mkdir();
-        }
-
     }
 
     static void writeToLog(User user1, User user2, String in) {
-        String fileName = user1.getUsername()+"+"+user2.getUsername();
-        String logPath = LOGS_DIR + "/" + fileName;
+        String fileName = "ChatLogs/"+user1.getUsername()+"+"+user2.getUsername()+".txt";
+        String altFileName = "ChatLogs/"+user2.getUsername()+"+"+user1.getUsername()+".txt";
+        String finalName;
 
+        File file = new File(fileName);
+        File altFile = new File(altFileName);
+
+        if(file.exists()) {
+            finalName = fileName;
+        } else if(altFile.exists()) {
+            finalName = altFileName;
+        } else {
+            finalName = fileName;
+        }
         try {
-            writeToFile(String.format("%s/%s.txt", logPath, fileName), in);
+            String previousContent = readFromFile(finalName);
+            writeToFile(finalName, previousContent+in+"\n");
         } catch (IOException e) {
             e.printStackTrace();
         }
 
     }
 
-    static String getLog(User user1, User user2) {
-        String fileName = user1.getUsername()+"+"+user2.getUsername();
-        String logPath = LOGS_DIR + "/" + fileName;
+    static String getLog(String user1, String user2) {
+        String fileName = "ChatLogs/"+user1+"+"+user2+".txt";
+        String altFileName = "ChatLogs/"+user2+"+"+user1+".txt";
+        String finalName;
 
-        return readFromFile(String.format("%s/%s.txt", logPath, fileName));
+        File file = new File(fileName);
+        File altFile = new File(altFileName);
+
+        if(file.exists()) {
+            finalName = fileName;
+        } else if(altFile.exists()) {
+            finalName = altFileName;
+        } else {
+            finalName = fileName;
+        }
+
+        return readFromFile(finalName);
     }
 
     static boolean logExists(User user1, User user2) {

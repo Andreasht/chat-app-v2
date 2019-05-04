@@ -3,6 +3,8 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.text.JTextComponent;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.*;
@@ -179,55 +181,7 @@ class Client {
             }
         });
 
-        findButton.addActionListener(e -> {
-            String addedContact = JOptionPane.showInputDialog(null,"Find contact:","Add new contact",JOptionPane.PLAIN_MESSAGE);
-            boolean found = false;
-            Signal signal = Signal.CON;
-            try {
-                Socket tempSocket = new Socket(SERVER_ADDRESS,PORT);
-                ObjectOutputStream tempOut = new ObjectOutputStream(tempSocket.getOutputStream());
-                ObjectInputStream tempIn = new ObjectInputStream(tempSocket.getInputStream());
-                // send addcontact signal:
-                tempOut.writeObject(signal);
-
-                // send active user:
-                tempOut.writeObject(activeUser);
-
-                // send name of added contact:
-                tempOut.writeObject(addedContact);
-
-                System.out.println("Finished sending addcontact req!");
-
-                // get success message:
-                Object readObject = tempIn.readObject();
-                if(!(readObject instanceof IllegalArgumentException)) {
-                    System.out.println("Added contact successfully!");
-                    found = true;
-                    // get newly updated contact list:
-                    // noinspection unchecked
-                    contacts = (ArrayList<String>) readObject;
-                    System.out.printf("Contacts: %s%n", contacts);
-                    new PopUp().infoBox("Added new contact!");
-                    drawMainWindow();
-                } else {
-                    System.err.println("Couldn't add contact!");
-                    ((IllegalArgumentException) readObject).printStackTrace();
-                    if(((IllegalArgumentException) readObject).getMessage().equals("User already has this contact!")) {
-                        found = true;
-                        new PopUp().errorBox("You already have this contact.");
-                    } else if(((IllegalArgumentException) readObject).getMessage().equals("Can't add yourself!")) {
-                        found = true;
-                        new PopUp().errorBox("You cannot add yourself as a contact!");
-                    }
-                }
-                tempSocket.close();
-            } catch (IOException | ClassNotFoundException e1) {
-                e1.printStackTrace();
-            }
-            if(!found) {
-                new PopUp().errorBox("No user with this username found.");
-            }
-        });
+        findButton.addActionListener(this::findContactAction);
 
         sendButton.addActionListener(e -> sendMessage());
 
@@ -244,6 +198,8 @@ class Client {
         contactsList.addListSelectionListener(new ListListener());
 //        chatArea.getDocument().addDocumentListener(new ChatListener());
 
+        chatArea.setText("Choose a contact from the menu");
+        inputArea.setEditable(false);
         panel.add(chatPane);
         panel.add(inputPane);
         panel.add(listScroller);
@@ -289,13 +245,13 @@ class Client {
 
         registerButton.addActionListener(e -> {
             boolean matches = Arrays.equals(passField.getPassword(), confirmField.getPassword());
-            if(matches) {
+            if (matches) {
                 String enteredName = userField.getText();
                 String newSalt = generateSalt(160).get();
-                String securePassword = hashPassword(passField.getPassword(),newSalt).get();
-                RegisterPackage pack = new RegisterPackage(enteredName,newSalt,securePassword);
+                String securePassword = hashPassword(passField.getPassword(), newSalt).get();
+                RegisterPackage pack = new RegisterPackage(enteredName, newSalt, securePassword);
                 try {
-                    socket = new Socket(SERVER_ADDRESS,PORT);
+                    socket = new Socket(SERVER_ADDRESS, PORT);
                     output = new ObjectOutputStream(socket.getOutputStream());
                     input = new ObjectInputStream(socket.getInputStream());
 
@@ -310,13 +266,13 @@ class Client {
 
                     // get success signal:
                     Object readObject = input.readObject();
-                    if(!(readObject instanceof IllegalArgumentException)) {
+                    if (!(readObject instanceof IllegalArgumentException)) {
                         Boolean registerSucceeded = (Boolean) readObject;
-                        if(registerSucceeded) {
+                        if (registerSucceeded) {
                             new PopUp().infoBox("Registered successfully! Returning to login screen.");
                             socket.close();
                             frame.dispose();
-                            init();
+                            Client.this.init();
                         } else {
                             new PopUp().errorBox("Error occurred during registering. Please wait a moment before trying again.");
                             socket.close();
@@ -372,6 +328,56 @@ class Client {
         new Client();
     }
 
+    private void findContactAction(ActionEvent e) {
+        String addedContact = JOptionPane.showInputDialog(null, "Find contact:", "Add new contact", JOptionPane.PLAIN_MESSAGE);
+        boolean found = false;
+        Signal signal = Signal.CON;
+        try {
+            Socket tempSocket = new Socket(SERVER_ADDRESS, PORT);
+            ObjectOutputStream tempOut = new ObjectOutputStream(tempSocket.getOutputStream());
+            ObjectInputStream tempIn = new ObjectInputStream(tempSocket.getInputStream());
+            // send addcontact signal:
+            tempOut.writeObject(signal);
+
+            // send active user:
+            tempOut.writeObject(activeUser);
+
+            // send name of added contact:
+            tempOut.writeObject(addedContact);
+
+            System.out.println("Finished sending addcontact req!");
+
+            // get success message:
+            Object readObject = tempIn.readObject();
+            if (!(readObject instanceof IllegalArgumentException)) {
+                System.out.println("Added contact successfully!");
+                found = true;
+                // get newly updated contact list:
+                // noinspection unchecked
+                contacts = (ArrayList<String>) readObject;
+                System.out.printf("Contacts: %s%n", contacts);
+                new PopUp().infoBox("Added new contact!");
+                drawMainWindow();
+            } else {
+                System.err.println("Couldn't add contact!");
+                ((IllegalArgumentException) readObject).printStackTrace();
+                if (((IllegalArgumentException) readObject).getMessage().equals("User already has this contact!")) {
+                    found = true;
+                    new PopUp().errorBox("You already have this contact.");
+                } else if (((IllegalArgumentException) readObject).getMessage().equals("Can't add yourself!")) {
+                    found = true;
+                    new PopUp().errorBox("You cannot add yourself as a contact!");
+                }
+            }
+            tempSocket.close();
+        } catch (IOException | ClassNotFoundException e1) {
+            e1.printStackTrace();
+        }
+        if (!found) {
+            new PopUp().errorBox("No user with this username found.");
+        }
+    }
+
     class PopUp
     {
         void infoBox(String infoMessage)
@@ -412,16 +418,13 @@ class Client {
                     } else {
                         System.out.println("Online!");
                         inputArea.setEditable(true);
-                        chatArea.setText("");
-
-                        System.out.println("ReadThread started!");
+                        chatArea.setText(Log.getLog(activeUser,recipient));
                     }
                     tempSocket.close();
                     System.out.println("Closed socket.");
                 } catch (IOException | ClassNotFoundException e1) {
                     e1.printStackTrace();
                 }
-
             }
         }
     }
