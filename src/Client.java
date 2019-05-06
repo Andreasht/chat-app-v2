@@ -21,7 +21,7 @@ import static andUtils.SecurityUtils.*;
 @SuppressWarnings({"Duplicates", "OptionalGetWithoutIsPresent"})
 class Client {
     private static final int PORT = 50000;
-    private static final String SERVER_ADDRESS = "192.168.191.221";
+    private static final String SERVER_ADDRESS = "127.0.0.1";
     private JTextArea chatArea;
     private JTextField inputArea;
     private JFrame frame;
@@ -201,8 +201,6 @@ class Client {
 
         sendButton.addActionListener(e -> sendMessage());
 
-
-
         String[] users = contacts.toArray(String[]::new);
         JList<String> contactsList = new JList<>(users);
         JScrollPane listScroller = new JScrollPane(contactsList);
@@ -212,7 +210,6 @@ class Client {
 
 
         contactsList.addListSelectionListener(new ListListener());
-//        chatArea.getDocument().addDocumentListener(new ChatListener());
 
         chatArea.setText("Choose a contact from the menu");
         inputArea.setEditable(false);
