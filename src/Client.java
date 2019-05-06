@@ -9,8 +9,10 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.*;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Optional;
 
 
 import static andUtils.Utils.*;
@@ -19,7 +21,7 @@ import static andUtils.SecurityUtils.*;
 @SuppressWarnings({"Duplicates", "OptionalGetWithoutIsPresent"})
 class Client {
     private static final int PORT = 50000;
-    private static final String SERVER_ADDRESS = "127.0.0.1";
+    private static final String SERVER_ADDRESS = "192.168.191.221";
     private JTextArea chatArea;
     private JTextField inputArea;
     private JFrame frame;
@@ -32,6 +34,10 @@ class Client {
     private String recipient;
     private ArrayList<String> contacts;
 
+    public static void main(String[] args) {
+        new Client();
+    }
+
     private Client() {
         makeGUILookNice("Segoe UI Semilight", Font.PLAIN, 14);
         init();
@@ -43,7 +49,7 @@ class Client {
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
         panel = new JPanel(null);
-        panel.setBounds(700,500,700,500);
+        panel.setBounds(700,550,700,500);
 
         ArrayList<JLabel> labels = new ArrayList<>();
         labels.add(new JLabel("Username:"));
@@ -139,7 +145,7 @@ class Client {
 
         registerButton.addActionListener(e -> drawRegister());
         frame.setContentPane(panel);
-        frame.setSize(700,500);
+        frame.setSize(700,525);
         frame.setResizable(false);
         frame.setVisible(true);
 
@@ -149,6 +155,16 @@ class Client {
         redrawBasic();
         chatArea = new JTextArea();
         inputArea = new JTextField();
+
+        JMenuBar menuBar = new JMenuBar();
+        JMenu menu = new JMenu("Menu");
+        JMenuItem refresh = new JMenuItem("Refresh chat");
+
+        refresh.addActionListener(e -> drawMainWindow());
+
+        menu.add(refresh);
+        menuBar.add(menu);
+        frame.setJMenuBar(menuBar);
 
 
         chatArea.setMargin(new Insets(6,6,6,6));
@@ -315,18 +331,13 @@ class Client {
             inputArea.requestFocus();
             inputArea.setText(null);
         } catch(Exception ex) {
-            JOptionPane.showMessageDialog(null,"Error.\n"+ex.toString(),"Error!",JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null,"Error.\n"+ex.toString()+"\nPerhaps the server was closed?","Error!",JOptionPane.ERROR_MESSAGE);
             System.err.println("Error in sending message!");
             ex.printStackTrace();
             System.exit(0);
         }
-
-
     }
 
-    public static void main(String[] args) {
-        new Client();
-    }
 
     private void findContactAction(ActionEvent e) {
         String addedContact = JOptionPane.showInputDialog(null, "Find contact:", "Add new contact", JOptionPane.PLAIN_MESSAGE);
@@ -418,7 +429,7 @@ class Client {
                     } else {
                         System.out.println("Online!");
                         inputArea.setEditable(true);
-                        chatArea.setText(Log.getLog(activeUser,recipient));
+                        chatArea.setText(getLog(activeUser,recipient).get());
                     }
                     tempSocket.close();
                     System.out.println("Closed socket.");
@@ -427,26 +438,26 @@ class Client {
                 }
             }
         }
-    }
 
-//    class ChatListener implements DocumentListener {
-//
-//        @Override
-//        public void insertUpdate(DocumentEvent e) {
-//            Log.writeToLog(activeUser,recipient,chatArea.getText());
-//            System.out.println("Wrote log");
-//        }
-//
-//        @Override
-//        public void removeUpdate(DocumentEvent e) {
-//
-//        }
-//
-//        @Override
-//        public void changedUpdate(DocumentEvent e) {
-//
-//        }
-//    }
+        Optional<String> getLog(String user1, String user2) {
+            try {
+                Socket tempSocket = new Socket(SERVER_ADDRESS,PORT);
+                ObjectOutputStream tempOut = new ObjectOutputStream(tempSocket.getOutputStream());
+                ObjectInputStream tempIn = new ObjectInputStream(tempSocket.getInputStream());
+                Signal signal = Signal.GET;
+                tempOut.writeObject(signal);
+                tempOut.writeObject(user1+"+"+user2);
+
+                String in = (String) tempIn.readObject();
+                System.out.println("read "+in);
+                tempSocket.close();
+                return Optional.of(in);
+            } catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+            return Optional.empty();
+        }
+    }
 
     class ReadThread implements Runnable {
         @Override

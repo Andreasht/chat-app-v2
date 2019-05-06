@@ -67,7 +67,6 @@ public final class SecurityUtils {
     public static boolean authenticate(char[] password, String salt, String key) {
         // hash the attempted password
         Optional<String> attemptedPasswordHashed = hashPassword(password,salt);
-
         // check if the attempted hash matches the correct hash
         return attemptedPasswordHashed.map(s -> s.equals(key)).orElse(false);
     }

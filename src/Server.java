@@ -44,7 +44,7 @@ class Server {
                 try {
                     // receive type signal
                     Signal signalIn = (Signal) objIn.readObject();
-                    System.out.printf("Received signal of type %s.",signalIn.getType());
+                    System.out.printf("Received signal of type %s%n.",signalIn.getType());
                     if(signalIn.equals(Signal.LOGIN)) {
                         // receive name
                         String receivedName = (String) objIn.readObject();
@@ -53,14 +53,13 @@ class Server {
                         try {
                             //check if login is ok
                             Boolean authenticated = auth(receivedName, receivedPass);
-                            System.out.printf("authenticated: %s%n", authenticated);
+                            System.out.printf("Authenticated: %s%n", authenticated);
                             //send result
                             objOut.writeObject(authenticated);
-                            System.out.println("wrote result");
                             if(authenticated) {
                                 User connectingUser = new User(receivedName,objOut,objIn); // fix!
                                 activeClients.add(connectingUser);
-                                System.out.println("added client to active clients");
+                                System.out.println("Added client to active clients!");
 
                                 // send users contacts to client:
                                 objOut.writeObject(connectingUser.getContacts());
@@ -114,6 +113,11 @@ class Server {
                         String receivedName = (String) objIn.readObject();
                         System.out.println("Received name: "+receivedName);
                         objOut.writeObject(hasActiveUser(receivedName));
+                    } else if(signalIn.equals(Signal.GET)) {
+                        String[] in = ((String) objIn.readObject()).split("\\+");
+                        String log = Log.getLog(in[0],in[1]);
+                        objOut.writeObject(log);
+                        System.out.println("sent log");
                     }
                 }    catch(ClassNotFoundException ex) {
                     System.err.println("Error in reading object input stream!");
@@ -125,7 +129,6 @@ class Server {
             ex.printStackTrace();
         }
 
-        System.out.println("pong!");
     }
 
     private void removeUser(User user) {
@@ -156,8 +159,7 @@ class Server {
         for (User client : activeClients) {
             if(client.getUsername().equals(name)) return client;
         }
-        System.out.println("how tf did this happen");
-        throw new IllegalArgumentException();
+        throw new IllegalArgumentException("Something went wrong in getting the user. Is the name correct? Checked name:"+name);
     }
 
     private Boolean hasActiveUser(String name) {
@@ -166,16 +168,6 @@ class Server {
         }
         return false;
     }
-
-//    private void writeToAll(Object input) {
-//        for(User client : activeClients) {
-//            try {
-//                client.getStreamOut().writeObject(input);
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//        }
-//    }
 
     private Boolean registerUser(RegisterPackage registerPackage) {
 
@@ -208,7 +200,6 @@ class Server {
         receiver.getStreamOut().writeObject(msg);
         sender.getStreamOut().writeObject(msg);
         Log.writeToLog(sender,receiver,msg);
-        System.out.println("Wrote log!");
     }
 
     class ClientHandler implements Runnable {
@@ -219,7 +210,6 @@ class Server {
             System.out.println("con");
             this.server = server;
             this.client = user;
-
         }
 
         @Override
@@ -227,14 +217,12 @@ class Server {
             System.out.println("start run!");
             String message;
             ObjectInputStream in = client.getStreamIn();
-            ObjectOutputStream out = client.getStreamOut();
             try {
                 while((message = (String) in.readObject()) != null) {
-                    String[] msgSplit = message.split("\\|");
+                    String[] msgSplit = message.split("\\|",2);
                     User recipient = getActiveUser(msgSplit[0]);
                     String msg = msgSplit[1];
                     sendMessage(client.getUsername()+": "+msg,client,recipient);
-                    System.out.println("wrote!");
                 }
             } catch (IOException | ClassNotFoundException e) {
                 if(e instanceof SocketException) {

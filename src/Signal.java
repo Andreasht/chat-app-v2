@@ -2,7 +2,8 @@ public enum Signal {
     LOGIN("LOGIN"),
     REG("REGISTER"),
     CON("ADDCONTACT"),
-    CHECK("CHECKIFONLINE");
+    CHECK("CHECKIFONLINE"),
+    GET("GETLOG");
 
 
     private final String signalType;
