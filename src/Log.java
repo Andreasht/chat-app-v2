@@ -4,8 +4,6 @@ import java.io.IOException;
 import static andUtils.FileScanner.*;
 @SuppressWarnings("Duplicates")
 final class Log implements java.io.Serializable {
-    private User user1;
-    private User user2;
     private static final File LOGS_DIR;
 
     static {
@@ -56,10 +54,4 @@ final class Log implements java.io.Serializable {
         return readFromFile(finalName);
     }
 
-    static boolean logExists(User user1, User user2) {
-        String fileName = user1.getUsername()+"+"+user2.getUsername();
-        String logPath = LOGS_DIR + "/" + fileName;
-        File logFile = new File(String.format("%s/%s.txt",logPath,fileName));
-        return logFile.exists();
-    }
 }

@@ -1,15 +1,14 @@
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.text.DefaultCaret;
 import javax.swing.text.JTextComponent;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.*;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
@@ -172,7 +171,9 @@ class Client {
         JScrollPane chatPane = new JScrollPane(chatArea);
         chatPane.setBounds(185,25,490,320);
         chatPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
-        chatPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        chatPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+     //   DefaultCaret caret = (DefaultCaret) chatArea.getCaret();
+     //   caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
 
         chatArea.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, true);
 
@@ -180,7 +181,7 @@ class Client {
         JScrollPane inputPane = new JScrollPane(inputArea);
         inputPane.setBounds(185,350,490,50);
         inputPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
-        inputPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        inputPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
         JButton sendButton = new JButton("Send");
         sendButton.setBounds(575,410,100,35);
@@ -204,7 +205,7 @@ class Client {
         String[] users = contacts.toArray(String[]::new);
         JList<String> contactsList = new JList<>(users);
         JScrollPane listScroller = new JScrollPane(contactsList);
-        listScroller.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        listScroller.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         listScroller.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
         listScroller.setBounds(25,25,160,320);
 
@@ -338,52 +339,55 @@ class Client {
 
     private void findContactAction(ActionEvent e) {
         String addedContact = JOptionPane.showInputDialog(null, "Find contact:", "Add new contact", JOptionPane.PLAIN_MESSAGE);
-        boolean found = false;
-        Signal signal = Signal.CON;
-        try {
-            Socket tempSocket = new Socket(SERVER_ADDRESS, PORT);
-            ObjectOutputStream tempOut = new ObjectOutputStream(tempSocket.getOutputStream());
-            ObjectInputStream tempIn = new ObjectInputStream(tempSocket.getInputStream());
-            // send addcontact signal:
-            tempOut.writeObject(signal);
+        if(!addedContact.equals("")) {
+            boolean found = false;
+            Signal signal = Signal.CONT;
+            try {
+                Socket tempSocket = new Socket(SERVER_ADDRESS, PORT);
+                ObjectOutputStream tempOut = new ObjectOutputStream(tempSocket.getOutputStream());
+                ObjectInputStream tempIn = new ObjectInputStream(tempSocket.getInputStream());
+                // send addcontact signal:
+                tempOut.writeObject(signal);
 
-            // send active user:
-            tempOut.writeObject(activeUser);
+                // send active user:
+                tempOut.writeObject(activeUser);
 
-            // send name of added contact:
-            tempOut.writeObject(addedContact);
+                // send name of added contact:
+                tempOut.writeObject(addedContact);
 
-            System.out.println("Finished sending addcontact req!");
+                System.out.println("Finished sending addcontact req!");
 
-            // get success message:
-            Object readObject = tempIn.readObject();
-            if (!(readObject instanceof IllegalArgumentException)) {
-                System.out.println("Added contact successfully!");
-                found = true;
-                // get newly updated contact list:
-                // noinspection unchecked
-                contacts = (ArrayList<String>) readObject;
-                System.out.printf("Contacts: %s%n", contacts);
-                new PopUp().infoBox("Added new contact!");
-                drawMainWindow();
-            } else {
-                System.err.println("Couldn't add contact!");
-                ((IllegalArgumentException) readObject).printStackTrace();
-                if (((IllegalArgumentException) readObject).getMessage().equals("User already has this contact!")) {
+                // get success message:
+                Object readObject = tempIn.readObject();
+                if (!(readObject instanceof IllegalArgumentException)) {
+                    System.out.println("Added contact successfully!");
                     found = true;
-                    new PopUp().errorBox("You already have this contact.");
-                } else if (((IllegalArgumentException) readObject).getMessage().equals("Can't add yourself!")) {
-                    found = true;
-                    new PopUp().errorBox("You cannot add yourself as a contact!");
+                    // get newly updated contact list:
+                    // noinspection unchecked
+                    contacts = (ArrayList<String>) readObject;
+                    System.out.printf("Contacts: %s%n", contacts);
+                    new PopUp().infoBox("Added new contact!");
+                    drawMainWindow();
+                } else {
+                    System.err.println("Couldn't add contact!");
+                    ((IllegalArgumentException) readObject).printStackTrace();
+                    if (((IllegalArgumentException) readObject).getMessage().equals("User already has this contact!")) {
+                        found = true;
+                        new PopUp().errorBox("You already have this contact.");
+                    } else if (((IllegalArgumentException) readObject).getMessage().equals("Can't add yourself!")) {
+                        found = true;
+                        new PopUp().errorBox("You cannot add yourself as a contact!");
+                    }
                 }
+                tempSocket.close();
+            } catch (IOException | ClassNotFoundException e1) {
+                e1.printStackTrace();
             }
-            tempSocket.close();
-        } catch (IOException | ClassNotFoundException e1) {
-            e1.printStackTrace();
+            if (!found) {
+                new PopUp().errorBox("No user with this username found.");
+            }
         }
-        if (!found) {
-            new PopUp().errorBox("No user with this username found.");
-        }
+
     }
 
     class PopUp

@@ -3,15 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/ChatApp.iml" filepath="$PROJECT_DIR$/ChatApp.iml" />
-      <module fileurl="file://$USER_HOME$/Downloads/README.iml" filepath="$USER_HOME$/Downloads/README.iml" />
-      <module fileurl="file://$USER_HOME$/Downloads/junit-engine-api.iml" filepath="$USER_HOME$/Downloads/junit-engine-api.iml" />
-      <module fileurl="file://$USER_HOME$/Downloads/junit-launcher.iml" filepath="$USER_HOME$/Downloads/junit-launcher.iml" />
-      <module fileurl="file://$USER_HOME$/Downloads/junit-tests.iml" filepath="$USER_HOME$/Downloads/junit-tests.iml" />
-      <module fileurl="file://$USER_HOME$/Downloads/junit4-engine.iml" filepath="$USER_HOME$/Downloads/junit4-engine.iml" />
-      <module fileurl="file://$USER_HOME$/Downloads/junit4-launcher-runner.iml" filepath="$USER_HOME$/Downloads/junit4-launcher-runner.iml" />
-      <module fileurl="file://$USER_HOME$/Downloads/junit4-runner.iml" filepath="$USER_HOME$/Downloads/junit4-runner.iml" />
-      <module fileurl="file://$USER_HOME$/Downloads/junit5-api.iml" filepath="$USER_HOME$/Downloads/junit5-api.iml" />
-      <module fileurl="file://$USER_HOME$/Downloads/junit5-engine.iml" filepath="$USER_HOME$/Downloads/junit5-engine.iml" />
     </modules>
   </component>
 </project>

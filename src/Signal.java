@@ -1,7 +1,7 @@
 public enum Signal {
     LOGIN("LOGIN"),
     REG("REGISTER"),
-    CON("ADDCONTACT"),
+    CONT("ADDCONTACT"),
     CHECK("CHECKIFONLINE"),
     GET("GETLOG");
 

@@ -94,7 +94,7 @@ class Server {
                         }
                         clientSocket.close();
 
-                    } else if(signalIn.equals(Signal.CON)) {
+                    } else if(signalIn.equals(Signal.CONT)) {
                         String receivedActiveName = (String) objIn.readObject();
                         String receivedContactName = (String) objIn.readObject();
                         User activeUser = getActiveUser(receivedActiveName);
@@ -170,7 +170,6 @@ class Server {
     }
 
     private Boolean registerUser(RegisterPackage registerPackage) {
-
         StringBuilder toWrite = new StringBuilder();
         for(String line : registerPackage.getData()) {
             toWrite.append(line).append("\n");
@@ -236,7 +235,6 @@ class Server {
 
             server.removeUser(client);
             System.out.println("end of handler!");
-
 
         }
     }
