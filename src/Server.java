@@ -17,9 +17,9 @@ class Server {
     }
 
     private Server() {
-        port = 50000;
+        this.port = 50000;
         activeClients = new ArrayList<>();
-        File userDirectory = new File("UserInfo");
+        File userDirectory = new File("UserInfo");                      // laver mappen hvis den ikke findes..
         if(!userDirectory.exists()) {
             userDirectory.mkdir();
             System.out.println("Created main userinfo directory...");
@@ -29,42 +29,44 @@ class Server {
 
     private void run() {
         try {
+            // start serveren med den givne port:
             ServerSocket serverSocket = new ServerSocket(port);
             System.out.println("Server launched. Listening on port "+port);
             //noinspection InfiniteLoopStatement
             while(true) {
-                //receive connection from client
+                // modtag forbindelse fra klient:
                 Socket clientSocket = serverSocket.accept();
                 System.out.printf("Received connection from: %s%n", clientSocket.getRemoteSocketAddress());
-                //open input stream
+                // åben streams der bruges til at læse input og skrive output:
                 ObjectOutputStream objOut = new ObjectOutputStream(clientSocket.getOutputStream());
                 ObjectInputStream objIn = new ObjectInputStream(clientSocket.getInputStream());
 
                 System.out.println("Opened streams.");
                 try {
-                    // receive type signal
+                    // læs hvilken type signal denne forbindelse bringer:
                     Signal signalIn = (Signal) objIn.readObject();
                     System.out.printf("Received signal of type %s%n.",signalIn.getType());
+
                     if(signalIn.equals(Signal.LOGIN)) {
-                        // receive name
+                        // hent navn og kode fra inputstream
                         String receivedName = (String) objIn.readObject();
-                        // receive pass
                         char[] receivedPass = (char[]) objIn.readObject();
                         try {
-                            //check if login is ok
+                            //check login med auth() metoden:
                             Boolean authenticated = auth(receivedName, receivedPass);
                             System.out.printf("Authenticated: %s%n", authenticated);
-                            //send result
+                            // send resultat til klient:
                             objOut.writeObject(authenticated);
                             if(authenticated) {
-                                User connectingUser = new User(receivedName,objOut,objIn); // fix!
+                                // instantier ny user:
+                                User connectingUser = new User(receivedName,objOut,objIn);
                                 activeClients.add(connectingUser);
                                 System.out.println("Added client to active clients!");
 
-                                // send users contacts to client:
+                                // send brugerens kontakter:
                                 objOut.writeObject(connectingUser.getContacts());
 
-                                // start a clienthandler thread for the new user:
+                                // start en ny ClientHandler tråd til brugeren:
                                 new Thread(new ClientHandler(this, connectingUser)).start();
 
                                 System.out.println("Started new ClientHandler linked to connecting client!");
@@ -80,6 +82,7 @@ class Server {
                         }
 
                     } else if(signalIn.equals(Signal.REG)) {
+                        // registrerings signalet
                         RegisterPackage registerPackageIn = (RegisterPackage) objIn.readObject();
                         System.out.println("Got register package!");
                         try {
@@ -88,13 +91,14 @@ class Server {
                                 System.out.println("Registered user!");
                             }
                             objOut.writeObject(success);
-                        } catch (IllegalArgumentException ex) {
+                        } catch (IllegalArgumentException ex) {                     // hvis en exception fanges, send den istedet
                             System.err.println("IllegalArgumentException thrown");
                             objOut.writeObject(ex);
                         }
                         clientSocket.close();
 
                     } else if(signalIn.equals(Signal.CONT)) {
+                        // add contact signalet
                         String receivedActiveName = (String) objIn.readObject();
                         String receivedContactName = (String) objIn.readObject();
                         User activeUser = getActiveUser(receivedActiveName);
@@ -109,11 +113,13 @@ class Server {
                         clientSocket.close();
 
                     } else if(signalIn.equals(Signal.CHECK)) {
-                        // This request checks if the input user is online
+                        // checker om en bruger er online
                         String receivedName = (String) objIn.readObject();
                         System.out.println("Received name: "+receivedName);
                         objOut.writeObject(hasActiveUser(receivedName));
+
                     } else if(signalIn.equals(Signal.GET)) {
+                        // henter chatlogs
                         String[] in = ((String) objIn.readObject()).split("\\+");
                         String log = Log.getLog(in[0],in[1]);
                         objOut.writeObject(log);
@@ -140,17 +146,18 @@ class Server {
     }
 
     private Boolean auth(String name, char[] pass) {
-        //check if the user is registered:
+        // check om brugeren er registreret:
         if(hasRegisteredUser(name)) {
-            // get then info and authenticate
+            // hent info fra brugerens UserInfo fil
             String filePath = String.format("UserInfo/%s/%s.txt",name,name);
             ArrayList<String> userInfo = readEachLine(filePath);
             String salt = userInfo.get(1);
             String hash = userInfo.get(2);
+            // kald SecurityUtils authenticate() metode
             return authenticate(pass, salt, hash);
         }
 
-        // if not, throw exception:
+        // hvis ikke, throw IllegalArgumentException:
         throw new IllegalArgumentException("No user with this name found!");
     }
 
@@ -206,7 +213,6 @@ class Server {
         private final User client;
 
         ClientHandler(Server server, User user) {
-            System.out.println("con");
             this.server = server;
             this.client = user;
         }
@@ -215,13 +221,13 @@ class Server {
         public void run() {
             System.out.println("start run!");
             String message;
-            ObjectInputStream in = client.getStreamIn();
+            ObjectInputStream in = client.getStreamIn(); // bind en variabel til brugerens input
             try {
-                while((message = (String) in.readObject()) != null) {
-                    String[] msgSplit = message.split("\\|",2);
-                    User recipient = getActiveUser(msgSplit[0]);
-                    String msg = msgSplit[1];
-                    sendMessage(client.getUsername()+": "+msg,client,recipient);
+                while((message = (String) in.readObject()) != null) {   //læs beskeder uendeligt
+                    String[] msgSplit = message.split("\\|",2);     // split besked
+                    User recipient = getActiveUser(msgSplit[0]);       // bind en variabel til senderen af beskeden
+                    String msg = msgSplit[1];                       // hent den konkrete besked
+                    sendMessage(client.getUsername()+": "+msg,client,recipient);    // send besked
                 }
             } catch (IOException | ClassNotFoundException e) {
                 if(e instanceof SocketException) {

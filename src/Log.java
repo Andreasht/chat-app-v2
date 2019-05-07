@@ -12,6 +12,7 @@ final class Log implements java.io.Serializable {
     }
 
     static void writeToLog(User user1, User user2, String in) {
+        // gør det med "alternativ fil navn" og "fil navn" fordi der er to brugere = to måder loggen kan være navngivet på: "bruger1+bruger2" eller "bruger2+bruger1"
         String fileName = "ChatLogs/"+user1.getUsername()+"+"+user2.getUsername()+".txt";
         String altFileName = "ChatLogs/"+user2.getUsername()+"+"+user1.getUsername()+".txt";
         String finalName;
@@ -32,6 +33,7 @@ final class Log implements java.io.Serializable {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        // grimt men det virker :)
 
     }
 

@@ -1,5 +1,4 @@
 import java.io.*;
-import java.net.Socket;
 import java.util.ArrayList;
 import static andUtils.FileScanner.*;
 
@@ -16,7 +15,7 @@ class User {
         streamOut = out;
         streamIn = in;
         contactsFile = new File(String.format("UserInfo/%s/contacts.txt",usernameIn));
-        initContacts();
+        initializeContacts();
         System.out.println("Created new user object!");
     }
 
@@ -32,7 +31,7 @@ class User {
         return streamIn;
     }
 
-    private void initContacts() {
+    private void initializeContacts() {
         if(!contactsFile.exists()) {
             try {
                 contactsFile.createNewFile();
@@ -47,7 +46,7 @@ class User {
         contacts = readEachLine(contactsFile.getPath());
     }
 
-    void addContact(String name) {
+    void addContact(String name) throws IllegalArgumentException {
         if(Server.hasRegisteredUser(name)) {
             try {
                 if(!hasContact(name)) {
